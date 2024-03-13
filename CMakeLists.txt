@@ -10,7 +10,8 @@ endif()
 
 option( BUILD_SHARED_LIBS "Build shared libraries" ON )
 option( BUILD_CLI_UTILITIES "Build a set of command line utilities" OFF )
-option( H5ZPLUGIN_PREFER_RPATH "Set RPATH; this can fight with package managers so turn off when building for them" ON )
+option( H5ZPLUGIN_PREFER_RPATH "Set RPATH; this can fight with package managers 
+                                so turn off when building for them" ON )
 mark_as_advanced(FORCE H5ZPLUGIN_PREFER_RPATH)
 
 find_package(HDF5 REQUIRED COMPONENTS C)
