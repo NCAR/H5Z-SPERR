@@ -6,7 +6,7 @@
  
 #include "hdf5.h"
 
-#define NX     5
+#define NX     6
 #define NY     6
 #define RANK   2
 
@@ -87,13 +87,36 @@ int main (void)
      */
     /* Setup dataset creation properties */
     hid_t prop = H5Pcreate(H5P_DATASET_CREATE);
-    H5Pset_chunk(prop, RANK, dims);
+    hsize_t chunks[2] = {3, 3};               /* dataset chunks */
+    H5Pset_chunk(prop, RANK, chunks);
     htri_t filter_avail = H5Zfilter_avail(H5Z_FILTER_MD5);
     if (filter_avail > 0)
       printf("Filter %d available!\n", H5Z_FILTER_MD5);
     else
       printf("Filter %d unavailable!\n", H5Z_FILTER_MD5);
-    status = H5Pset_filter(prop, H5Z_FILTER_MD5, H5Z_FLAG_MANDATORY, 0, NULL);
+    unsigned cd_in[2] = {1, 2};
+    status = H5Pset_filter(prop, H5Z_FILTER_MD5, H5Z_FLAG_MANDATORY, 2, cd_in);
+
+    /* query the filter info */
+    unsigned flags = 32;
+    size_t cd_nelem = 32, nchar = 32;
+    unsigned cd_values[cd_nelem + 1];
+    char name[nchar];
+    status = H5Pget_filter_by_id(prop, H5Z_FILTER_MD5, &flags, &cd_nelem, cd_values, 
+                                nchar, name, cd_values + cd_nelem);
+    if (cd_nelem) {
+      printf("md5 filter cd_values len = %lu : ", cd_nelem);
+      for (unsigned i = 0; i < cd_nelem; i++)
+        printf("%u", cd_values[i]);
+      printf("\n");
+    }
+    else
+      printf("md5 filter cd_values empty\n");
+
+    /* query the chunk dimension */
+    chunks[0] = 0; chunks[1] = 0;
+    int c_dims = H5Pget_chunk(prop, 2, chunks);
+    printf("chunks has %d ranks: %llu x %llu\n", c_dims, chunks[0], chunks[1]);
 
     /*
      * Create a dataset WITH compression

@@ -10,15 +10,6 @@
 
 #define H5Z_FILTER_SPERR 34000
 
-#define H5Z_SPERR_PUSH_AND_GOTO(MAJ, MIN, RET, MSG)   \
-do                                                    \
-{                                                     \
-    H5Epush(H5E_DEFAULT,__FILE__,_funcname_,__LINE__, \
-        H5E_ERR_CLS,MAJ,MIN,MSG);                     \
-    retval = RET;                                     \
-    goto done;                                        \
-} while(0)
-
 static htri_t H5Z_can_apply_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
 {
   /*
@@ -28,6 +19,40 @@ static htri_t H5Z_can_apply_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
    */ 
 
   /* Get datatype class. Fail if not floats. */
+  if (H5Tget_class(type_id) != H5T_FLOAT) {
+    H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADTYPE,
+            "bad data type. Only floats are supported in H5Z-SPERR");
+    return 0;
+  }
+
+  /* Get the dataspace rank. Fail if not 2 or 3. */
+  int ndims = H5Sget_simple_extent_ndims(space_id);
+  if (ndims < 2 || ndims > 3) {
+    H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADTYPE,
+            "bad ranks. Only rank==2 or rank==3 are supported in H5Z-SPERR");
+    return 0;
+  }
+
+  /* Chunks have to be 2D or 3D as well, and to be conservative, we also check chunk sizes. */
+  hsize_t chunks[3];
+  ndims = H5Pget_chunk(dcpl_id, 3, chunks);
+  if (ndims < 2 || ndims > 3) {
+    H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADTYPE,
+            "bad chunk ranks. Only rank==2 or rank==3 are supported in H5Z-SPERR");
+    return 0;
+  }
+
+  bool bad_chunk = false;
+  for (int i = 0; i < ndims; i++) {
+    if (chunks[i] < 9)
+      bad_chunk = true;
+  }
+  if (bad_chunk) {
+    H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADTYPE,
+            "bad chunk dimensions. (may relax this requirement in the future)");
+    return 0;
+  }
+
   return 1;
 }
 static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)

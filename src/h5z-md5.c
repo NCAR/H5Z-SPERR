@@ -32,6 +32,8 @@ static htri_t H5Z_can_apply_md5(hid_t dcpl_id, hid_t type_id, hid_t space_id)
 }
 static herr_t H5Z_set_local_md5(hid_t dcpl_id, hid_t type_id, hid_t space_id)
 {
+  // unsigned cd_in[2] = {4, 5};
+  // H5Pmodify_filter(dcpl_id, H5Z_FILTER_MD5, H5Z_FLAG_MANDATORY, 2, cd_in);
   return 0;
 }
 static size_t H5Z_filter_md5(unsigned int flags, size_t cd_nelmts,
