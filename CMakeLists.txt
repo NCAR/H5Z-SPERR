@@ -15,7 +15,7 @@ option( H5ZPLUGIN_PREFER_RPATH "Set RPATH; this can fight with package managers
 mark_as_advanced(FORCE H5ZPLUGIN_PREFER_RPATH)
 
 find_package(HDF5 REQUIRED COMPONENTS C)
-message(STATUS "Found HDF5 Version: ${HDF5_VERSION}")
+message(STATUS "Found HDF5 Version: ${HDF5_VERSION}: ${HDF5_C_LIBRARIES}")
 
 if(H5ZPLUGIN_PREFER_RPATH)
   set( CMAKE_SKIP_BUILD_RPATH             FALSE )
