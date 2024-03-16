@@ -145,6 +145,7 @@ static int H5Z_SPERR_unpack_meta(unsigned int meta,         /* Input  */
 
   /*
    * Extract data type from position 4-5.
+   * Only float and double are supported right now.
    */
   unsigned pos4 = meta & (1u << 4);
   if (pos4)
@@ -184,9 +185,9 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
   int rank = H5Sget_simple_extent_ndims(space_id);
 
   /* Get the datatype size. It must be 4 or 8, since the float type is verified by `can_apply`. */
-  int dtype = 1;  /* is_float */  
+  int is_float = 1;
   if (H5Tget_size(type_id) == 8)
-    dtype = 0;  /* !is_float i.e. double */  
+    is_float = 0;  /* !is_float i.e. double */  
 
   /* Get chunk sizes. */
   hsize_t chunks[3];
@@ -209,6 +210,13 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
     return -1;
   }
   int mode = user_cd_values[0];
+  double quality = 0.0;
+  memcpy(&quality, &user_cd_values[1], sizeof(quality));
+  if (quality < 0.0) {
+    H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADVALUE,
+            "User specified quality is negative ??");
+    return -1;
+  }
 
   /*
    * Assemble the meta info (cd_values[5] or cd_values[6]) to be stored.
@@ -218,7 +226,7 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
    * [3-5]: (dimx, dimy, dimz) in 3D cases.
    */
   unsigned int cd_values[6] = {0, 0, 0, 0, 0, 0};
-  cd_values[0] = H5Z_SPERR_pack_meta(rank, dtype, mode);
+  cd_values[0] = H5Z_SPERR_pack_meta(rank, is_float, mode);
   memcpy(&cd_values[1], &user_cd_values[1], sizeof(double));
   cd_values[3] = chunks[0];
   cd_values[4] = chunks[1];
@@ -235,43 +243,90 @@ static size_t H5Z_filter_sperr(unsigned int flags, size_t cd_nelmts,
                                const unsigned int cd_values[], size_t nbytes,
                                size_t *buf_size, void **buf)
 {
-  /* Decompress */
+  /* Extract info from cd_values[] */
+  int rank, is_float, mode;
+  H5Z_SPERR_unpack_meta(cd_values[0], &rank, &is_float, &mode);
+  double quality;
+  memcpy(&quality, &cd_values[1], sizeof(quality));
+  unsigned int dims[3] = {1, 1, 1};
+  dims[0] = cd_values[3];
+  dims[1] = cd_values[4];
+  if (rank == 3)
+    dims[2] = cd_values[5];
+
+  /* Decompression */
   if (flags & H5Z_FLAG_REVERSE) {
-#if 0
-    unsigned char cksum[16];
-    assert(nbytes>=16);
-    calc_md5(nbytes-16, *buf, cksum);
 
-    /* Compare */
-    if (memcmp(cksum, (unsigned char*)(*buf)+nbytes-16, 16ul))
-      return 0; /*fail*/
-
-    /* Strip off checksum */
-    return nbytes-16;
-#endif
-    return nbytes;
-  } 
-  else { /* Compress */
-    printf("  compress: ");
-    for (size_t i = 0; i < cd_nelmts; i++)
-      printf("%u  ", cd_values[i]);
-    printf("\n");
-#if 0
-    unsigned char cksum[16];
-    calc_md5(nbytes, *buf, cksum);
-
-    /* Increase buffer size if necessary */
-    if (nbytes+16>*buf_size) {
-      *buf_size = nbytes + 16;
-      *buf = realloc(*buf, *buf_size);
+    void* dst = NULL; /* buffer to hold the decompressed data */
+    int ret = 0;
+    if (rank == 2)
+      ret = sperr_decomp_2d(*buf, nbytes, is_float, dims[0], dims[1], &dst);
+    else {
+      size_t dimx, dimy, dimz;
+      ret = sperr_decomp_3d(*buf, nbytes, is_float, 1, &dimx, &dimy, &dimz, &dst);
+    }
+    if (ret != 0) {
+      if (dst)
+        free(dst);
+      H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADVALUE,
+              "SPERR decompression failed.");
+      return 0;
     }
 
-    /* Append checksum */
-    memcpy((unsigned char*)(*buf)+nbytes, cksum, 16ul);
-    return nbytes+16;
-#endif
-    return nbytes;
-  }
+    size_t dst_len = (is_float ? 4ul : 8ul) * dims[0] * dims[1] * dims[2];
+    if (dst_len < *buf_size) {  /* Re-use the input buffer */
+      memcpy(*buf, dst, dst_len);
+      free(dst);
+    }
+    else {  /* Point to the new buffer */
+      free(*buf);
+      *buf = dst;
+      *buf_size = dst_len;
+    }
+
+    return dst_len;
+
+  }       /* Finish Decompression */ 
+  else {  /* Compression */
+
+    /* Sanity check on the data size. */
+    if ((is_float ? 4ul : 8ul) * dims[0] * dims[1] * dims[2] != nbytes) {
+      H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADSIZE,
+              "Compression: input buffer len isn't right.");
+      return 0;
+
+    }
+
+    void* dst = NULL;   /* buffer to hold compressed bitstream */
+    size_t dst_len = 0;
+    int ret = 0;;
+
+    if (rank == 2)
+      ret = sperr_comp_2d(*buf, is_float, dims[0], dims[1], mode, quality, 0, &dst, &dst_len);
+    else
+      ret = sperr_comp_3d(*buf, is_float, dims[0], dims[1], dims[2], dims[0], dims[1], dims[2],
+                              mode, quality, 1, &dst, &dst_len);
+    if (ret != 0) {
+      if (dst)
+        free(dst);
+      H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADVALUE,
+              "SPERR compression failed.");
+      return 0;
+    }
+
+    if (dst_len < *buf_size) {  /* Re-use the input buffer */
+      memcpy(*buf, dst, dst_len);
+      free(dst);
+    }
+    else {  /* Point to the new buffer */
+      free(*buf);
+      *buf = dst;
+      *buf_size = dst_len;
+    }
+
+    return dst_len;
+
+  } /* Finish compression */
 }
 
 const H5Z_class2_t H5Z_SPERR_class_t = {
@@ -279,7 +334,7 @@ const H5Z_class2_t H5Z_SPERR_class_t = {
                    H5Z_FILTER_SPERR,    /* Filter id number    */
                    1,                   /* encoder_present flag (set to true) */
                    1,                   /* decoder_present flag (set to true) */
-                   "h5z-sperr",         /* Filter name for debugging  */
+                   "H5Z-SPERR",         /* Filter name for debugging  */
                    H5Z_can_apply_sperr, /* The "can apply" callback   */
                    H5Z_set_local_sperr, /* The "set local" callback   */
                    H5Z_filter_sperr};   /* The actual filter function */

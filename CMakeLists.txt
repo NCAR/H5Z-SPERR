@@ -42,3 +42,8 @@ if( BUILD_CLI_UTILITIES )
   add_subdirectory( utilities ${CMAKE_BINARY_DIR}/bin )
 endif()
 
+#
+# Start installation using GNU installation rules
+#
+include( GNUInstallDirs )
+install( TARGETS h5z-sperr LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} )
