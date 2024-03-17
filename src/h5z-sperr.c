@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -29,7 +28,7 @@ static htri_t H5Z_can_apply_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
   int ndims = H5Sget_simple_extent_ndims(space_id);
   if (ndims < 2 || ndims > 3) {
     H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADTYPE,
-            "bad ranks. Only rank==2 or rank==3 are supported in H5Z-SPERR");
+            "bad dataspace ranks. Only rank==2 or rank==3 are supported in H5Z-SPERR");
     return 0;
   }
 
