@@ -269,17 +269,20 @@ static size_t H5Z_filter_sperr(unsigned int flags,
       ret = sperr_decomp_3d(*buf, nbytes, is_float, 1, &dimx, &dimy, &dimz, &dst);
     }
     if (ret != 0) {
-      if (dst)
+      if (dst) {
         free(dst);
+        dst = NULL;
+      }
       H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADVALUE,
               "SPERR decompression failed.");
       return 0;
     }
 
     size_t dst_len = (is_float ? 4ul : 8ul) * dims[0] * dims[1] * dims[2];
-    if (dst_len < *buf_size) { /* Re-use the input buffer */
+    if (dst_len <= *buf_size) { /* Re-use the input buffer */
       memcpy(*buf, dst, dst_len);
       free(dst);
+      dst = NULL;
     }
     else { /* Point to the new buffer */
       free(*buf);
@@ -299,10 +302,9 @@ static size_t H5Z_filter_sperr(unsigned int flags,
       return 0;
     }
 
-    void* dst = NULL; /* buffer to hold compressed bitstream */
+    void* dst = NULL; /* buffer to hold the compressed bitstream */
     size_t dst_len = 0;
     int ret = 0;
-    ;
 
     if (rank == 2)
       ret = sperr_comp_2d(*buf, is_float, dims[0], dims[1], mode, quality, 0, &dst, &dst_len);
@@ -310,16 +312,19 @@ static size_t H5Z_filter_sperr(unsigned int flags,
       ret = sperr_comp_3d(*buf, is_float, dims[0], dims[1], dims[2], dims[0], dims[1], dims[2],
                           mode, quality, 1, &dst, &dst_len);
     if (ret != 0) {
-      if (dst)
+      if (dst) {
         free(dst);
+        dst = NULL;
+      }
       H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADVALUE,
               "SPERR compression failed.");
       return 0;
     }
 
-    if (dst_len < *buf_size) { /* Re-use the input buffer */
+    if (dst_len <= *buf_size) { /* Re-use the input buffer */
       memcpy(*buf, dst, dst_len);
       free(dst);
+      dst = NULL;
     }
     else { /* Point to the new buffer */
       free(*buf);
