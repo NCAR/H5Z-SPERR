@@ -24,7 +24,7 @@ export HDF5_PLUGIN_PATH=/path/to/install/this/plugin
 ```
 The user program does not need to link to this plugin or SPERR; it only needs to specify the plugin ID of `34000`.
 
-##  `cd_values[]` in the Programming Interface
+##  Specify `cd_values[]` in The Programming Interface
 To apply SPERR compression using the HDF5 programming interface, one needs to specify 1) what compression mode and 2)
 what compression quality to use. Supported compression modes and qualities are summarized below:
 | Mode No.      | Mode Meaning         | Meaningful Quality Range  |
@@ -35,7 +35,7 @@ what compression quality to use. Supported compression modes and qualities are s
 
 `H5Z-SPERR` organizes the compression mode and quality information in an `unsigned int cd_values[3]` object, which
 is passed to the HDF5 library. Specifically, `cd_values[0]` keeps the compression mode, and `cd_values[1-2]` keeps
-the compression quality info as a 64-bit `double`. A few examples are:
+the compression quality info as a 64-bit `double`. A few examples to specify `cd_values[]` are:
 ```C++
 unsigned int cd_values[3];  /* will be passed to the HDF5 library */
 double quality;
