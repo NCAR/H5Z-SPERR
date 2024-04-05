@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -7,7 +6,7 @@
 #include <H5PLextern.h>
 #include <hdf5.h>
 
-#define H5Z_FILTER_SPERR 34000
+#include "h5z-sperr.h"
 
 static htri_t H5Z_can_apply_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
 {
@@ -56,12 +55,11 @@ static htri_t H5Z_can_apply_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
 }
 
 /*
- * Pack three types of information into an `unsigned int`.
- * It returns 0 on error, and non-zero on success.
+ * Pack information about the input data into an `unsigned int`.
+ * It returns the encoded unsigned int, which shouldn't be zero.
  */
-static unsigned int H5Z_SPERR_pack_meta(int rank,      /* Input */
-                                        int dtype,     /* Input */
-                                        int comp_mode) /* Input */
+static unsigned int H5Z_SPERR_pack_data_type(int rank,  /* Input */
+                                             int dtype) /* Input */
 {
   unsigned int ret = 0;
 
@@ -83,7 +81,7 @@ static unsigned int H5Z_SPERR_pack_meta(int rank,      /* Input */
   }
 
   /*
-   * Bit position 4-5 encode data type.
+   * Bit position 4-7 encode data type.
    * Only float (1) and double (0) are supported right now.
    */
   if (dtype == 1)       /* is_float   */
@@ -94,38 +92,15 @@ static unsigned int H5Z_SPERR_pack_meta(int rank,      /* Input */
     return 0;
   }
 
-  /*
-   * Bit position 6-8 encode compression mode.
-   * Only BPP (1), PSNR (2), and PWE (3) modes are supported right now.
-   */
-  switch (comp_mode) {
-    case 1:
-      ret |= 1u << 6;
-      break;
-    case 2:
-      ret |= 1u << 7;
-      break;
-    case 3:
-      ret |= 1u << 6;
-      ret |= 1u << 7;
-      break;
-    default:
-      H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADVALUE,
-              "Unsupported compression mode.");
-      return 0;
-  }
-
   return ret;
 }
 
 /*
- * Unpack three types of information from an `unsigned int`.
- * It returns non-zero on error, and zero on success.
+ * Unpack information about the input data from an `unsigned int`.
  */
-static int H5Z_SPERR_unpack_meta(unsigned int meta, /* Input  */
-                                 int* rank,         /* Output */
-                                 int* dtype,        /* Output */
-                                 int* comp_mode)    /* Output */
+static void H5Z_SPERR_unpack_data_type(unsigned int meta, /* Input  */
+                                       int* rank,         /* Output */
+                                       int* dtype)        /* Output */
 {
   /*
    * Extract rank from bit positions 0-3.
@@ -139,11 +114,10 @@ static int H5Z_SPERR_unpack_meta(unsigned int meta, /* Input  */
   else { /* error */
     H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADVALUE,
             "Rank is not 2 or 3.");
-    return 1;
   }
 
   /*
-   * Extract data type from position 4-5.
+   * Extract data type from position 4-7.
    * Only float and double are supported right now.
    */
   unsigned pos4 = meta & (1u << 4);
@@ -151,25 +125,6 @@ static int H5Z_SPERR_unpack_meta(unsigned int meta, /* Input  */
     *dtype = 1; /* is_float  */
   else
     *dtype = 0; /* is_double */
-
-  /*
-   * Extract compression mode from position 6-8.
-   */
-  unsigned pos6 = meta & 1u << 6;
-  unsigned pos7 = meta & 1u << 7;
-  if (pos6 && !pos7)
-    *comp_mode = 1;
-  else if (!pos6 && pos7)
-    *comp_mode = 2;
-  else if (pos6 && pos7)
-    *comp_mode = 3;
-  else { /* error */
-    H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADVALUE,
-            "Compression type not supported.");
-    return 1;
-  }
-
-  return 0;
 }
 
 static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
@@ -204,41 +159,34 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
   herr_t status =
       H5Pget_filter_by_id(dcpl_id, H5Z_FILTER_SPERR, &flags, &user_cd_nelem, user_cd_values, nchar,
                           name, user_cd_values + user_cd_nelem - 1);
-  if (user_cd_nelem != 3) {
+  if (user_cd_nelem != 1) {
     H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADSIZE,
             "User cd_values[] isn't 3 elements ??");
     return -1;
   }
-  int mode = user_cd_values[0];
-  double quality = 0.0;
-  memcpy(&quality, &user_cd_values[1], sizeof(quality));
-  if (quality < 0.0) {
-    H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADVALUE,
-            "User specified quality is negative ??");
-    return -1;
-  }
 
   /*
-   * Assemble the meta info (cd_values[5] or cd_values[6]) to be stored.
+   * Assemble the meta info (cd_values[4] or cd_values[5]) to be stored.
    * [0]  : 2D/3D, float/double, compression mode.
-   * [1-2]: As a double, compression quality.
-   * [3-4]: (dimx, dimy) in 2D cases.
-   * [3-5]: (dimx, dimy, dimz) in 3D cases.
+   * [1]  : compression specifics
+   * [2-3]: (dimx, dimy) in 2D cases.
+   * [2-4]: (dimx, dimy, dimz) in 3D cases.
    */
-  unsigned int cd_values[6] = {0, 0, 0, 0, 0, 0};
-  cd_values[0] = H5Z_SPERR_pack_meta(rank, is_float, mode);
-  memcpy(&cd_values[1], &user_cd_values[1], sizeof(double));
-  cd_values[3] = chunks[0];
-  cd_values[4] = chunks[1];
+  unsigned int cd_values[5] = {0, 0, 0, 0, 0};
+  cd_values[0] = H5Z_SPERR_pack_data_type(rank, is_float);
+  cd_values[1] = user_cd_values[0];
+  cd_values[2] = chunks[0];
+  cd_values[3] = chunks[1];
   if (rank == 2)
-    H5Pmodify_filter(dcpl_id, H5Z_FILTER_SPERR, H5Z_FLAG_MANDATORY, 5, cd_values);
+    H5Pmodify_filter(dcpl_id, H5Z_FILTER_SPERR, H5Z_FLAG_MANDATORY, 4, cd_values);
   else {
-    cd_values[5] = chunks[2];
-    H5Pmodify_filter(dcpl_id, H5Z_FILTER_SPERR, H5Z_FLAG_MANDATORY, 6, cd_values);
+    cd_values[4] = chunks[2];
+    H5Pmodify_filter(dcpl_id, H5Z_FILTER_SPERR, H5Z_FLAG_MANDATORY, 5, cd_values);
   }
 
   return 0;
 }
+
 static size_t H5Z_filter_sperr(unsigned int flags,
                                size_t cd_nelmts,
                                const unsigned int cd_values[],
@@ -247,15 +195,20 @@ static size_t H5Z_filter_sperr(unsigned int flags,
                                void** buf)
 {
   /* Extract info from cd_values[] */
-  int rank, is_float, mode;
-  H5Z_SPERR_unpack_meta(cd_values[0], &rank, &is_float, &mode);
+  int rank, is_float;
+  H5Z_SPERR_unpack_data_type(cd_values[0], &rank, &is_float);
+  if ((rank == 2 && cd_nelmts != 4) || (rank == 3 && cd_nelmts != 5)) {
+    H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADVALUE,
+            "SPERR filter cd_values[] length not correct.");
+    return 0;
+  }
+
+  int mode;
   double quality;
-  memcpy(&quality, &cd_values[1], sizeof(quality));
-  unsigned int dims[3] = {1, 1, 1};
-  dims[0] = cd_values[3];
-  dims[1] = cd_values[4];
+  H5Z_SPERR_decode_cd_values(cd_values[1], &mode, &quality);
+  unsigned int dims[3] = {cd_values[2], cd_values[3], 1};
   if (rank == 3)
-    dims[2] = cd_values[5];
+    dims[2] = cd_values[4];
 
   /* Decompression */
   if (flags & H5Z_FLAG_REVERSE) {
