@@ -4,12 +4,12 @@
  
 #include "hdf5.h"
 
-#define H5Z_FILTER_SPERR 34000
+#include "h5z-sperr.h"
 
 int main (int argc, char* argv[])
 {
-    if (argc != 5) {
-      printf("Usage: sperr-example-3d 3D_float_file dimx dimy dimz\n");
+    if (argc != 7) {
+      printf("Usage: sperr-example-3d 3D_float_file dimx dimy dimz mode quality\n");
       exit (1);
     }
     const char* filename = argv[1];
@@ -63,10 +63,10 @@ int main (int argc, char* argv[])
      *    mode == 2 --> fixed peak signal-to-noise ratio (PSNR)
      *    mode == 3 --> fixed point-wise error (PWE)
      */
-    unsigned int cd_values[3] = {3, 0, 0};
-    double quality = 1e-7;
-    memcpy(&cd_values[1], &quality, sizeof(quality));
-    status = H5Pset_filter(prop, H5Z_FILTER_SPERR, H5Z_FLAG_MANDATORY, 3, cd_values);
+    int mode = atoi(argv[5]);
+    double quality = atof(argv[6]);
+    unsigned int cd_values = H5Z_SPERR_make_cd_values(mode, quality);
+    status = H5Pset_filter(prop, H5Z_FILTER_SPERR, H5Z_FLAG_MANDATORY, 1, &cd_values);
 
     /*
      * Create a dataset WITH compression, and write to it!  

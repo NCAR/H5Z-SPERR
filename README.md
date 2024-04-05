@@ -1,7 +1,7 @@
 # H5Z-SPERR
 This is an HDF5 Plugin for the [SPERR](https://github.com/ncar/sperr) Compressor.
 At this moment, it's not registered with the HDF group, and uses an experimental
-HDF plugin ID of [`34000`](https://github.com/NCAR/H5Z-SPERR/blob/7f26424fb225e6f306d750c6c0f00e85c66b2d02/src/h5z-sperr.c#L11).
+HDF plugin ID of `34000`.
 
 ## Build and Install
 Needless to say, `H5Z-SPERR` depends on both `HDF5` and `SPERR`. 
@@ -33,25 +33,7 @@ what compression quality to use. Supported compression modes and qualities are s
 | 2             | Fixed peak signal-to-noise ratio (PSNR) | 0.0 < quality |
 | 3             | Fixed point-wise error (PWE)            | 0.0 < quality |
 
-`H5Z-SPERR` organizes the compression mode and quality information in an `unsigned int cd_values[3]` object, which
-is passed to the HDF5 library. Specifically, `cd_values[0]` keeps the compression mode, and `cd_values[1-2]` keeps
-the compression quality info as a 64-bit `double`. A few examples to specify `cd_values[]` are:
-```C++
-unsigned int cd_values[3];  /* will be passed to the HDF5 library */
-double quality;
-
-/* Use fixed-BPP compression mode: 4 bit-per-pixel. */
-cd_values[0] = 1;
-quality = 4.0;
-memcpy(&cd_values[1], &quality, sizeof(quality));
-
-/* Use fixed-PSNR compression mode: 150 decibel. */
-cd_values[0] = 2;
-quality = 150.0;
-memcpy(&cd_values[1], &quality, sizeof(quality));
-
-/* Use fixed-PWE compression mode: tolerance = 1e-6. */
-cd_values[0] = 3;
-quality = 1e-6;
-memcpy(&cd_values[1], &quality, sizeof(quality));
-```
+`H5Z-SPERR` organizes the compression mode and quality information in a 32-bit `unsigned int`,
+which can be saved in the `cd_values[3]` that is the input to the HDF5 library.
+Users are recommended to call the `unsigned int H5Z_SPERR_make_cd_values(int mode, double quality)`
+function from the header `h5z-sperr.h` to have these two pieces of information correctly encoded.
