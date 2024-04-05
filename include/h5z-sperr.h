@@ -16,6 +16,7 @@
  *   - Fixed bitrate compression:                mode = 1; quality = target bitrate.
  *   - Fixed PSNR compression:                   mode = 2; quality = target PSNR.
  *   - Fixed PWE (point-wise error) compression: mode = 3; quality = PWE tolerance.
+ * The encoded value is returned and needs to be passed to HDF5 as `cd_values[1]`.
  */
 unsigned int H5Z_SPERR_make_cd_values(int mode, double quality)
 {
