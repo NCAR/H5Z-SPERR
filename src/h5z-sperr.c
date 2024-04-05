@@ -222,7 +222,7 @@ static size_t H5Z_filter_sperr(unsigned int flags,
     }
     if (ret != 0) {
       if (dst) {
-        free(dst);
+        free(dst); /* allocated by SPERR, using malloc() */
         dst = NULL;
       }
       H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADVALUE,
@@ -233,11 +233,11 @@ static size_t H5Z_filter_sperr(unsigned int flags,
     size_t dst_len = (is_float ? 4ul : 8ul) * dims[0] * dims[1] * dims[2];
     if (dst_len <= *buf_size) { /* Re-use the input buffer */
       memcpy(*buf, dst, dst_len);
-      free(dst);
+      free(dst); /* allocated by SPERR, using malloc() */
       dst = NULL;
     }
-    else { /* Point to the new buffer */
-      free(*buf);
+    else {                 /* Point to the new buffer */
+      H5free_memory(*buf); /* allocated by HDF5 */
       *buf = dst;
       *buf_size = dst_len;
     }
@@ -265,7 +265,7 @@ static size_t H5Z_filter_sperr(unsigned int flags,
                           mode, quality, 1, &dst, &dst_len);
     if (ret != 0) {
       if (dst) {
-        free(dst);
+        free(dst); /* allocated by SPERR, using malloc() */
         dst = NULL;
       }
       H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADVALUE,
@@ -275,11 +275,11 @@ static size_t H5Z_filter_sperr(unsigned int flags,
 
     if (dst_len <= *buf_size) { /* Re-use the input buffer */
       memcpy(*buf, dst, dst_len);
-      free(dst);
+      free(dst); /* allocated by SPERR, using malloc() */
       dst = NULL;
     }
-    else { /* Point to the new buffer */
-      free(*buf);
+    else {                 /* Point to the new buffer */
+      H5free_memory(*buf); /* allocated by HDF5 */
       *buf = dst;
       *buf_size = dst_len;
     }
