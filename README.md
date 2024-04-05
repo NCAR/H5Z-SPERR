@@ -34,6 +34,13 @@ what compression quality to use. Supported compression modes and qualities are s
 | 3             | Fixed point-wise error (PWE)            | 0.0 < quality |
 
 `H5Z-SPERR` organizes the compression mode and quality information in a 32-bit `unsigned int`,
-which can be saved in the `cd_values[3]` that is the input to the HDF5 library.
-Users are recommended to call the `unsigned int H5Z_SPERR_make_cd_values(int mode, double quality)`
-function from the header `h5z-sperr.h` to have these two pieces of information correctly encoded.
+which can be saved in `cd_values[]` that is the input to HDF5 routines such as `H5Pset_filter()`.
+Users need to include the header [`h5z-sperr.h`](https://github.com/NCAR/H5Z-SPERR/blob/main/include/h5z-sperr.h) from this repository
+and call the `unsigned int H5Z_SPERR_make_cd_values(int mode, double quality){}` function 
+to have these two pieces of information correctly encoded. For example:
+```C++
+int mode = 3;              /* Fixed PWE compression */
+double quality = 1e-6;     /* PWE tolerance = 1e-6 */
+unsigned int cd_values = H5Z_SPERR_make_cd_values(mode, quality);           /* Generate cd_values */
+H5Pset_filter(prop, H5Z_FILTER_SPERR, H5Z_FLAG_MANDATORY, 1, &cd_values);   /* Specify SPERR compression in HDF5 */
+```
