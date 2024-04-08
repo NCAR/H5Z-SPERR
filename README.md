@@ -21,7 +21,7 @@ library file:
 ```bash
 export HDF5_PLUGIN_PATH=/path/to/install/this/plugin
 ```
-The user program does not need to link to this plugin or SPERR; it only needs to specify the plugin ID of `34000`.
+The user program does not need to link to this plugin or SPERR; it only needs to specify the plugin ID of `32028`.
 
 ##  Specify `cd_values[]` in The Programming Interface
 To apply SPERR compression using the HDF5 programming interface, one needs to specify 1) what compression mode and 2)
