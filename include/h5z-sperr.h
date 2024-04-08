@@ -5,7 +5,7 @@
 #include <math.h>
 #include <stdlib.h>
 
-#define H5Z_FILTER_SPERR 34000
+#define H5Z_FILTER_SPERR 32028
 
 #define FRACTIONAL_BITS 16
 #define INTEGER_BITS 12

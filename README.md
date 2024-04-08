@@ -1,7 +1,6 @@
 # H5Z-SPERR
-This is an HDF5 Plugin for the [SPERR](https://github.com/ncar/sperr) Compressor.
-At this moment, it's not registered with the HDF group, and uses an experimental
-HDF plugin ID of `34000`.
+This is an HDF5 Plugin for the [SPERR](https://github.com/ncar/sperr) compressor.
+It is registered with the HDF Group with a plugin ID of `32028`.
 
 ## Build and Install
 Needless to say, `H5Z-SPERR` depends on both `HDF5` and `SPERR`. 
