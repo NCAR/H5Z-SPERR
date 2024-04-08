@@ -40,6 +40,6 @@ to have these two pieces of information correctly encoded. For example:
 ```C++
 int mode = 3;              /* Fixed PWE compression */
 double quality = 1e-6;     /* PWE tolerance = 1e-6 */
-unsigned int cd_values = H5Z_SPERR_make_cd_values(mode, quality);           /* Generate cd_values */
-H5Pset_filter(prop, H5Z_FILTER_SPERR, H5Z_FLAG_MANDATORY, 1, &cd_values);   /* Specify SPERR compression in HDF5 */
+unsigned int cd_values = H5Z_SPERR_make_cd_values(mode, quality);   /* Generate cd_values */
+H5Pset_filter(prop, 32028, H5Z_FLAG_MANDATORY, 1, &cd_values);      /* Specify SPERR compression in HDF5 */
 ```
