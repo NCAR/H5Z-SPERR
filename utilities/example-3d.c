@@ -9,7 +9,7 @@
 int main (int argc, char* argv[])
 {
     if (argc != 7) {
-      printf("Usage: sperr-example-3d 3D_float_file dimx dimy dimz mode quality\n");
+      printf("Usage: example-3d 3D_float_file dimx dimy dimz mode quality\n");
       exit (1);
     }
     const char* filename = argv[1];

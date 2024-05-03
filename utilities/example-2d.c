@@ -9,7 +9,7 @@
 int main (int argc, char* argv[])
 {
     if (argc != 6) {
-      printf("Usage: sperr-example-2d 2D_double_file dimx dimy mode quality\n");
+      printf("Usage: example-2d 2D_double_file dimx dimy mode quality\n");
       exit (1);
     }
     const char* filename = argv[1];
