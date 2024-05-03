@@ -23,7 +23,7 @@ export HDF5_PLUGIN_PATH=/path/to/install/this/plugin
 ```
 The user program does not need to link to this plugin or SPERR; it only needs to specify the plugin ID of `32028`.
 
-##  Find the `cd_values[]`
+##  Find `cd_values[]`
 To apply SPERR compression using the HDF5 plugin, one needs to specify 1) what compression mode and 2)
 what compression quality to use. Supported compression modes and qualities are summarized below:
 | Mode No.      | Mode Meaning         | Meaningful Quality Range  |
@@ -36,10 +36,9 @@ The HDF5 libraries takes in these compression parameters as one or more 32-bit `
 which are named `cd_values[]` in most HDF5 routines.
 In the case of `H5Z-SPERR`, there is exactly one `unsigned int` used to carry this information.
 
-### Find the `cd_values[]` Using the Programming Interface
+### Find  `cd_values[]` Using the Programming Interface
 Using the HDF5 programming interface, `cd_values[]` carrying the compression parameters are passed
-to HDF5 routines such as `H5Pset_filter()`.
-To find the correct `cd_values[]`, a user
+to HDF5 routines such as `H5Pset_filter()`. To find the correct `cd_values[]`, a user
 needs to include the header [`h5z-sperr.h`](https://github.com/NCAR/H5Z-SPERR/blob/main/include/h5z-sperr.h) from this repository
 and call the `unsigned int H5Z_SPERR_make_cd_values(int mode, double quality)` function 
 to have these two pieces of information correctly encoded. For example:
@@ -50,7 +49,7 @@ unsigned int cd_values = H5Z_SPERR_make_cd_values(mode, quality);   /* Generate 
 H5Pset_filter(prop, 32028, H5Z_FLAG_MANDATORY, 1, &cd_values);      /* Specify SPERR compression in HDF5 */
 ```
 
-### Find the `cd_values[]` Using CLI Tool `generate_cd_values`
+### Find `cd_values[]` Using the CLI Tool `generate_cd_values`
 After building `H5Z-SPERR`, a command line tool named `generate_cd_values` becomes available to encode SPERR compression mode
 and quality into a single `unsigned int`. The produced value can then be used in other command line tools such as `h5repack`.
 In the following example, `generate_cd_values` reports that `268651725u` encodes fixed-rate compression with a bitrate of 3.3 bit-per-value.
