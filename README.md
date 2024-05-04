@@ -62,8 +62,8 @@ Please use this value as a single 32-bit unsigned integer in your applications.
 ```
 
 ## Use in NetCDF-4 APIs
-`H5Z-SPERR` also facilitates the application of SPERR compression on [NetCDF-4 files]
-(https://docs.unidata.ucar.edu/netcdf/NUG/md_filters.html#filters_enable);
+`H5Z-SPERR` also facilitates the application of SPERR compression on 
+[NetCDF-4 files](https://docs.unidata.ucar.edu/netcdf/NUG/md_filters.html#filters_enable);
 one simply needs to define the filter on a variable:
 ```C
 nc_def_var_filter(ncid, varid, 32028, 1, &cd_values);
