@@ -48,6 +48,7 @@ double quality = 1e-6;     /* PWE tolerance = 1e-6 */
 unsigned int cd_values = H5Z_SPERR_make_cd_values(mode, quality);   /* Generate cd_values */
 H5Pset_filter(prop, 32028, H5Z_FLAG_MANDATORY, 1, &cd_values);      /* Specify SPERR compression in HDF5 */
 ```
+See a complete example [here](https://github.com/NCAR/H5Z-SPERR/blob/main/utilities/example-3d.c).
 
 ### Find `cd_values[]` Using the CLI Tool `generate_cd_values`
 After building `H5Z-SPERR`, a command line tool named `generate_cd_values` becomes available to encode SPERR compression mode
@@ -59,3 +60,12 @@ For fixed-rate compression with a bitrate of 3,
 H5Z-SPERR cd_values = 268651725u.
 Please use this value as a single 32-bit unsigned integer in your applications.
 ```
+
+## Use in NetCDF-4 APIs
+`H5Z-SPERR` can also be used in NetCDF-4 files 
+([documentation](https://docs.unidata.ucar.edu/netcdf/NUG/md_filters.html#filters_enable);
+one simply needs to define the filter on a variable:
+```C
+nc_def_var_filter(ncid, varid, 32028, 1, &cd_values);
+```
+See a complete example [here](https://github.com/NCAR/H5Z-SPERR/blob/main/example/simple_xy_nc4_wr.c).
