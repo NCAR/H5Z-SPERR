@@ -43,6 +43,6 @@ int main(int argc, char* argv[])
         exit(1);
   }
   
-  printf("H5Z-SPERR cd_values = %uu.\n", cd_values);
+  printf("H5Z-SPERR cd_values = %uu (Filter ID = %d).\n", cd_values, H5Z_FILTER_SPERR);
   printf("Please use this value as a single 32-bit unsigned integer in your applications.\n");
 }
