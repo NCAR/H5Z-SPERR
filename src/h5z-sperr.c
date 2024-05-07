@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -98,6 +99,7 @@ static unsigned int H5Z_SPERR_pack_data_type(int rank,  /* Input */
     ret |= 1u << 1; /* Position 1 */
   }
   else {
+    assert(rank == 3);
     ret |= 1u;      /* Position 0 */
     ret |= 1u << 1; /* Position 1 */
   }
@@ -108,6 +110,8 @@ static unsigned int H5Z_SPERR_pack_data_type(int rank,  /* Input */
    */
   if (dtype == 1)   /* is_float   */
     ret |= 1u << 4; /* Position 4 */
+  else
+    assert(dtype == 0);
 
   return ret;
 }
@@ -172,6 +176,8 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
   int is_float = 1;
   if (H5Tget_size(type_id) == 8)
     is_float = 0; /* !is_float, i.e. double */
+  else
+    assert(H5Tget_size(type_id) == 4);
 
   /* Get chunk sizes. */
   hsize_t chunks[4] = {0, 0, 0, 0};
@@ -180,6 +186,7 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
   for (int i = 0; i < 4; i++)
     if (chunks[i] > 1)
       real_dims++;
+  assert(real_dims == 2 || real_dims == 3);
 
   /*
    * Assemble the meta info to be stored.

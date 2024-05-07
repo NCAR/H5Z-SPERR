@@ -5,7 +5,7 @@
 int main(int argc, char* argv[])
 {
   if (argc < 3 || argc > 4) {
-    printf("Usage: ./generate_cd_values  compression_mode  compression_quality  [rank_swap]\n");
+    printf("Usage: ./generate_cd_values  compression_mode  compression_quality  [rank_swap_flag]\n");
     exit(1);
   }
 
