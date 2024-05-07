@@ -36,7 +36,8 @@ In addition, the rank order needs to be swapped sometimes to achieve the best co
 For example, if a 2D slice of dimensions `(64, 128)` has the `dim=128` rank being the fastest
 varying rank, then this slice needs a "rank order swap" to achieve the best compression.
 In general, given dimensions of `(NX, NY, NZ)`, we want the `X` rank to be varying the fastest,
-and the `Z` rank to be varying the slowest.
+and the `Z` rank to be varying the slowest, before the data is passed to the compressor.
+"Rank order swap" helps to achieve it.
 
 The HDF5 libraries takes in these compression parameters as one or more 32-bit `unsigned int` values,
 which are named `cd_values[]` in most HDF5 routines.
