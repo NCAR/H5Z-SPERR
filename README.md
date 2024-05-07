@@ -60,9 +60,11 @@ H5Pset_filter(prop, 32028, H5Z_FLAG_MANDATORY, 1, &cd_values);            /* Spe
 See a complete example [here](https://github.com/NCAR/H5Z-SPERR/blob/main/utilities/example-3d.c).
 
 ### Find `cd_values[]` Using the CLI Tool `generate_cd_values`
-After building `H5Z-SPERR`, a command line tool named `generate_cd_values` becomes available to encode SPERR compression mode
-and quality into a single `unsigned int`. The produced value can then be used in other command line tools such as `h5repack`.
-In the following example, `generate_cd_values` reports that `268651725u` encodes fixed-rate compression with a bitrate of 3.3 bit-per-value.
+After building `H5Z-SPERR`, a command line tool named `generate_cd_values` becomes available to encode 
+1) SPERR compression mode, 2) quality, and 3) if to perform rank order swap
+into a single `unsigned int`. The produced value can then be used in other command line tools such as `h5repack`.
+In the following example, `generate_cd_values` reports that `268651725u` encodes fixed-rate compression with 
+a bitrate of 3.3 bit-per-value, without doing rank order swap.
 ```Bash
 $ ./bin/generate_cd_values 1 3.3
 For fixed-rate compression with a bitrate of 3, without swapping rank orders,
