@@ -33,9 +33,9 @@ what compression quality to use. Supported compression modes and qualities are s
 | 3             | Fixed point-wise error (PWE)            | 0.0 < quality |
 
 In addition, the rank order needs to be swapped sometimes to achieve the best compression.
-For example, if a 2D slice of dimensions `64 x 128` has the dim=128 rank being the fastest
+For example, if a 2D slice of dimensions `(64, 128)` has the `dim=128` rank being the fastest
 varying rank, then this slice needs a "rank order swap" to achieve the best compression.
-In general, given dimensions of `NX x NY x NZ`, we want the `X` rank to be varying the fastest,
+In general, given dimensions of `(NX, NY, NZ)`, we want the `X` rank to be varying the fastest,
 and the `Z` rank to be varying the slowest.
 
 The HDF5 libraries takes in these compression parameters as one or more 32-bit `unsigned int` values,
