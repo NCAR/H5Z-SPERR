@@ -7,6 +7,7 @@ Needless to say, `H5Z-SPERR` depends on both `HDF5` and `SPERR`.
 After HDF5 and SPERR are installed, `H5Z-SPERR` can be configured and built using `cmake`:
 ```bash
 export HDF5_ROOT=/path/to/your/preferred/HDF5/installation
+mkdir build-H5-SPERR && cd build-H5-SPERR
 cmake -DSPERR_INSTALL_DIR=/path/to/SPERR/installation     \
       -DCMAKE_INSTALL_PREFIX=/path/to/install/this/plugin \
       /path/to/H5Z-SPERR/source/code
@@ -71,6 +72,8 @@ For fixed-rate compression with a bitrate of 3, without swapping rank orders,
 H5Z-SPERR cd_values = 268651725u (Filter ID = 32028).
 Please use this value as a single 32-bit unsigned integer in your applications.
 ```
+Note: an integer produced by `generate_cd_values` can be decoded by another command line tool, `decode_cd_values`,
+to show the coded compression parameters.
 
 ## Use in NetCDF-4 APIs
 `H5Z-SPERR` also facilitates the application of SPERR compression on 

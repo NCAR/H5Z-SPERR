@@ -47,3 +47,8 @@ endif()
 #
 include( GNUInstallDirs )
 install( TARGETS h5z-sperr LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} )
+
+if( BUILD_CLI_UTILITIES )
+  install( TARGETS generate_cd_values decode_cd_values
+           RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} )
+endif()
