@@ -157,15 +157,14 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
    */
 
   /* Get the user-specified compression mode and quality. */
-  const size_t user_cd_nelem = 2;
-  const size_t nchar = 16;
-  unsigned int user_cd_values[user_cd_nelem] = {0, 0};
-  unsigned int flags = 0;
-  char name[nchar];
-  for (size_t i = 0; i < nchar; i++)
+  size_t user_cd_nelem = 2;
+  unsigned int user_cd_values[2]; /* !! The same value as variable `user_cd_nelem` !! */
+  char name[16];
+  for (size_t i = 0; i < 16; i++)
     name[i] = ' ';
+  unsigned int flags = 0;
   herr_t status =
-      H5Pget_filter_by_id(dcpl_id, H5Z_FILTER_SPERR, &flags, &user_cd_nelem, user_cd_values, nchar,
+      H5Pget_filter_by_id(dcpl_id, H5Z_FILTER_SPERR, &flags, &user_cd_nelem, user_cd_values, 16,
                           name, user_cd_values + user_cd_nelem - 1);
   if (user_cd_nelem != 1) {
 #ifndef NDEBUG
