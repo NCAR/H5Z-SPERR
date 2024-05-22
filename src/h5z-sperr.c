@@ -158,7 +158,7 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
 
   /* Get the user-specified compression mode and quality. */
   size_t user_cd_nelem = 2;
-  unsigned int user_cd_values[2] = {0, 0}; /* !! The same value as variable `user_cd_nelem` !! */
+  unsigned int user_cd_values[2] = {0, 0}; /* !! The same length as `user_cd_nelem` specified !! */
   char name[16];
   for (size_t i = 0; i < 16; i++)
     name[i] = ' ';
