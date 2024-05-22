@@ -157,9 +157,13 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
    */
 
   /* Get the user-specified compression mode and quality. */
-  size_t user_cd_nelem = 2, nchar = 16;
-  unsigned int user_cd_values[user_cd_nelem], flags;
+  const size_t user_cd_nelem = 2;
+  const size_t nchar = 16;
+  unsigned int user_cd_values[user_cd_nelem] = {0, 0};
+  unsigned int flags = 0;
   char name[nchar];
+  for (size_t i = 0; i < nchar; i++)
+    name[i] = ' ';
   herr_t status =
       H5Pget_filter_by_id(dcpl_id, H5Z_FILTER_SPERR, &flags, &user_cd_nelem, user_cd_values, nchar,
                           name, user_cd_values + user_cd_nelem - 1);
@@ -201,7 +205,7 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
   int i1 = 2, i2 = 0;
   while (i2 < 4) {
     if (chunks[i2] > 1)
-      cd_values[i1++] = chunks[i2];
+      cd_values[i1++] = (unsigned int)chunks[i2];
     i2++;
   }
   if (real_dims == 2)
