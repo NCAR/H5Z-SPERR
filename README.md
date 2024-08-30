@@ -24,6 +24,29 @@ export HDF5_PLUGIN_PATH=/path/to/install/this/plugin
 ```
 The user program does not need to link to this plugin or SPERR; it only needs to specify the plugin ID of `32028`.
 
+## Use in NetCDF-4 APIs
+`H5Z-SPERR` also facilitates the application of SPERR compression on 
+[NetCDF-4 files](https://docs.unidata.ucar.edu/netcdf/NUG/md_filters.html#filters_enable);
+one simply needs to define the filter on a variable:
+```C
+nc_def_var_filter(ncid, varid, 32028, 1, &cd_values);
+```
+See a complete example [here](https://github.com/NCAR/H5Z-SPERR/blob/main/example/simple_xy_nc4_wr.c).
+
+## Use in Python
+`H5Z-SPERR` is supported by the Python package[hdf5plugin](https://github.com/silx-kit/hdf5plugin)
+since version `5.0.0`.
+One can install the package by issuing 
+```bash
+pip install hdf5plugin [--user]           # using pip
+conda install -c conda-forge hdf5plugin   # using conda
+```
+and use it by a simple
+```python
+import hdf5plugin
+```
+
+
 ##  Find `cd_values[]`
 To apply SPERR compression using the HDF5 plugin, one needs to specify 1) what compression mode and 2)
 what compression quality to use. Supported compression modes and qualities are summarized below:
@@ -75,11 +98,3 @@ Please use this value as a single 32-bit unsigned integer in your applications.
 Note: an integer produced by `generate_cd_values` can be decoded by another command line tool, `decode_cd_values`,
 to show the coded compression parameters.
 
-## Use in NetCDF-4 APIs
-`H5Z-SPERR` also facilitates the application of SPERR compression on 
-[NetCDF-4 files](https://docs.unidata.ucar.edu/netcdf/NUG/md_filters.html#filters_enable);
-one simply needs to define the filter on a variable:
-```C
-nc_def_var_filter(ncid, varid, 32028, 1, &cd_values);
-```
-See a complete example [here](https://github.com/NCAR/H5Z-SPERR/blob/main/example/simple_xy_nc4_wr.c).
