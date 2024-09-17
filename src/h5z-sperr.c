@@ -17,7 +17,7 @@ static htri_t H5Z_can_apply_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
   /*
    * 	dcpl_id	  Dataset creation property list identifier
    * 	type_id	  Datatype identifier
-   * 	space_id	Dataspace identifier
+   * 	space_id  Dataspace identifier
    */
 
   /* Get datatype class. Fail if not floats. */
@@ -39,6 +39,10 @@ static htri_t H5Z_can_apply_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
     return 0;
   }
 
+  /* Get the dataspace dimension. */
+  hsize_t dspace_dims[4] = {0, 0, 0, 0};
+  ndims = H5Sget_simple_extent_dims(space_id, dspace_dims, NULL);
+
   /* Chunks have to be 2D, 3D, or 4D as well. */
   hsize_t chunks[4] = {0, 0, 0, 0};
   ndims = H5Pget_chunk(dcpl_id, 4, chunks);
@@ -52,7 +56,19 @@ static htri_t H5Z_can_apply_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
     return 0;
   }
 
-  /* Find out the real dimension. */
+  /* Dataspace dimension must be divisible by the chunk dimension. */
+  for (int i = 0; i < ndims; i++)
+    if (dspace_dims[i] % chunks[i]) {
+#ifndef NDEBUG
+      printf("%s: %d, dataspace dim = %llu, chunk dim = %llu\n", __FILE__, __LINE__, dspace_dims[i],
+             chunks[i]);
+#endif
+      H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADTYPE,
+              "bad chunk size. The dataspace dimensions must be divisible by the chunk dimension");
+      return 0;
+    }
+
+  /* Find out the real dimension (of each chunk). */
   int real_dims = 0;
   for (int i = 0; i < 4; i++)
     if (chunks[i] > 1)
@@ -153,7 +169,7 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
   /*
    * 	dcpl_id	  Dataset creation property list identifier
    * 	type_id	  Datatype identifier
-   * 	space_id	Dataspace identifier
+   * 	space_id  Dataspace identifier
    */
 
   /* Get the user-specified compression mode and quality. */
@@ -163,9 +179,8 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
   for (size_t i = 0; i < 16; i++)
     name[i] = ' ';
   unsigned int flags = 0;
-  herr_t status =
-      H5Pget_filter_by_id(dcpl_id, H5Z_FILTER_SPERR, &flags, &user_cd_nelem, user_cd_values, 16,
-                          name, user_cd_values + user_cd_nelem - 1);
+  herr_t status = H5Pget_filter_by_id(dcpl_id, H5Z_FILTER_SPERR, &flags, &user_cd_nelem,
+                                      user_cd_values, 16, name, user_cd_values + user_cd_nelem - 1);
   if (user_cd_nelem != 1) {
 #ifndef NDEBUG
     printf("%s: %d, user_cd_nelem = %lu\n", __FILE__, __LINE__, user_cd_nelem);
@@ -285,7 +300,7 @@ static size_t H5Z_filter_sperr(unsigned int flags,
 
     return dst_len;
 
-  }      /* Finish Decompression */
+  } /* Finish Decompression */
   else { /* Compression */
 
     /* Sanity check on the data size. */
