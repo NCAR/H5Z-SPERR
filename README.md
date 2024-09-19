@@ -24,6 +24,7 @@ export HDF5_PLUGIN_PATH=/path/to/install/this/plugin
 ```
 The user program does not need to link to this plugin or SPERR; it only needs to specify the plugin ID of `32028`.
 
+<!--
 ## Use in NetCDF-4 APIs
 `H5Z-SPERR` also facilitates the application of SPERR compression on 
 [NetCDF-4 files](https://docs.unidata.ucar.edu/netcdf/NUG/md_filters.html#filters_enable);
@@ -32,18 +33,20 @@ one simply needs to define the filter on a variable:
 nc_def_var_filter(ncid, varid, 32028, 1, &cd_values);
 ```
 See a complete example [here](https://github.com/NCAR/H5Z-SPERR/blob/main/example/simple_xy_nc4_wr.c).
+-->
 
 ## Use in Python
-`H5Z-SPERR` is supported by the Python package[hdf5plugin](https://github.com/silx-kit/hdf5plugin)
+`H5Z-SPERR` is supported by the Python package [hdf5plugin](https://github.com/silx-kit/hdf5plugin)
 since version `5.0.0`.
 One can install the package by issuing 
 ```bash
 pip install hdf5plugin [--user]           # using pip
 conda install -c conda-forge hdf5plugin   # using conda
 ```
-and use it by a simple
+and use it by importing these two packages:
 ```python
-import hdf5plugin
+import h5py         # provide general HDF5 support
+import hdf5plugin   # provide HDF5 plugin support
 ```
 
 
