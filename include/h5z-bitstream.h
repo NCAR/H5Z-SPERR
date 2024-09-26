@@ -23,6 +23,7 @@
 
 struct h5z_bitstream{
   uint64_t* begin;  /* begin of the stream */
+  uint64_t* end;    /* end of the stream (not enforced) */
   uint64_t* ptr;    /* pointer to the next word to be read/written */
   uint64_t  buffer; /* incoming/outgoing bits */
   int       bits;   /* number of buffered bits (0 <= bits < 64) */
@@ -34,5 +35,17 @@ void icecream_use_mem(icecream* s, void* mem, size_t bytes);
 
 /* Position the bitstream for reading or writing at the beginning. */
 void icecream_rewind(icecream* s);
+
+/* Read a bit. Please don't read beyond the end of the stream. */
+int icecream_rbit(icecream* s);
+
+/* Write a bit (0 or 1). Please don't write beyond the end of the stream. */
+void icecream_wbit(icecream* s, int bit);
+
+/* Return the bit offset to the next bit to be written. */
+size_t icecream_wtell(icecream* s);
+
+/* Write any remaining buffered bits and align stream on next word boundary. */
+void icecream_flush(icecream* s);
 
 #endif
