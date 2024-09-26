@@ -18,6 +18,9 @@
  *    a test at the beginning and records the test result.
  */
 
+#ifndef BITMASK_COMPACTOR_H
+#define BITMASK_COMPACTOR_H
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <assert.h>
@@ -34,3 +37,5 @@ typedef uint32_t INT;
  * all 0's or all 1's is more frequent.
  */
 int bitcpt_freq(const void* buf, size_t len);
+
+#endif

@@ -1,0 +1,38 @@
+/*
+ * This is a mimic of the Bitstream class in SPERR:
+ * https://github.com/NCAR/SPERR/blob/main/include/Bitstream.h
+ *
+ * The most significant difference is that bitstream here doesn't manage
+ * any memory; it reads a bit sequence from a user-provided memory buffer,
+ * or writes a bit sequence to a user-provided memory buffer.
+ * 
+ * The "object" is named `h5z_bitstream` and all functions operating on it
+ * are named with a prefix `icecream`.
+ */
+
+#ifndef H5Z_BITSTREAM_H
+#define H5Z_BITSTREAM_H
+
+#include <stdlib.h>
+#include <stdint.h>
+#include <assert.h>
+
+#ifndef NDEBUG
+#include <stdio.h>
+#endif
+
+struct h5z_bitstream{
+  uint64_t* begin;  /* begin of the stream */
+  uint64_t* ptr;    /* pointer to the next word to be read/written */
+  uint64_t  buffer; /* incoming/outgoing bits */
+  int       bits;   /* number of buffered bits (0 <= bits < 64) */
+};
+typedef struct h5z_bitstream icecream;
+
+/* Specify a bitstream to use memory provided by users. */
+void icecream_use_mem(icecream* s, void* mem, size_t bytes);
+
+/* Position the bitstream for reading or writing at the beginning. */
+void icecream_rewind(icecream* s);
+
+#endif
