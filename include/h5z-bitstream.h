@@ -42,6 +42,9 @@ int icecream_rbit(icecream* s);
 /* Write a bit (0 or 1). Please don't write beyond the end of the stream. */
 void icecream_wbit(icecream* s, int bit);
 
+/* Return the bit offset to the next bit to be read. */
+size_t icecream_rtell(icecream* s);
+
 /* Return the bit offset to the next bit to be written. */
 size_t icecream_wtell(icecream* s);
 

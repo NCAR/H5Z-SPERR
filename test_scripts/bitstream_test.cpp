@@ -25,15 +25,20 @@ TEST(bitstream, StreamWriteRead)
   for (size_t i = 0; i < N; i++) {
     const auto bit = distrib1(gen);
     vec[i] = bit;
+    EXPECT_EQ(icecream_wtell(&s1), i) << " at idx = " << i;
     icecream_wbit(&s1, bit);
+    EXPECT_EQ(icecream_wtell(&s1), i + 1) << " at idx = " << i;
   }
   EXPECT_EQ(icecream_wtell(&s1), N);
   icecream_flush(&s1);
   EXPECT_EQ(icecream_wtell(&s1), 192);
 
   icecream_rewind(&s1);
-  for (size_t i = 0; i < N; i++)
+  for (size_t i = 0; i < N; i++) {
+    EXPECT_EQ(icecream_rtell(&s1), i) << " at idx = " << i;
     EXPECT_EQ(icecream_rbit(&s1), vec[i]) << " at idx = " << i;
+    EXPECT_EQ(icecream_rtell(&s1), i + 1) << " at idx = " << i;
+  }
 }
 
 
