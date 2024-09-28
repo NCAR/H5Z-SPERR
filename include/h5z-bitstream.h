@@ -30,7 +30,14 @@ struct h5z_bitstream{
 };
 typedef struct h5z_bitstream icecream;
 
-/* Specify a bitstream to use memory provided by users. */
+/*
+ * Specify a bitstream to use memory provided by users.
+ * NOTE: the memory length (in bytes) does not need to be a multiplier of 8,
+ * however, reading from or writing to the last incomplete word (i.e., the
+ * last y bytes where y < 8) will result in memory errors.
+ * For example, given a memory buffer of 20 bytes, it is only safe
+ * to read or write to the first 16 bytes, or 16 x 8 = 128 bits.
+ */
 void icecream_use_mem(icecream* s, void* mem, size_t bytes);
 
 /* Position the bitstream for reading or writing at the beginning. */

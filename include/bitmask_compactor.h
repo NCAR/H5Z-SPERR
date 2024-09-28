@@ -32,10 +32,8 @@
 /* Change this typedef to use different width. */
 typedef uint32_t INT;
 
-/*
- * Given a chunk of memory `buf` with length `len` in bytes, return whether
- * all 0's or all 1's is more frequent.
- */
+/* Given a chunk of memory `buf` with length `len` in bytes, return whether
+ * all 0's or all 1's is more frequent. */
 int bitcpt_freq(const void* buf, size_t len);
 
 #endif

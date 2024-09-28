@@ -9,7 +9,6 @@ extern "C" {
 
 namespace {
 
-
 TEST(bitstream, StreamWriteRead)
 {
   const size_t N = 159;
@@ -39,6 +38,34 @@ TEST(bitstream, StreamWriteRead)
     EXPECT_EQ(icecream_rbit(&s1), vec[i]) << " at idx = " << i;
     EXPECT_EQ(icecream_rtell(&s1), i + 1) << " at idx = " << i;
   }
+}
+
+TEST(bitstream, PartialWord)
+{
+  auto mem = std::make_unique<char[]>(20);
+  auto s1 = icecream();
+  icecream_use_mem(&s1, mem.get(), 20);
+  auto vec = std::vector<bool>();
+
+  // Make 80 writes. The first 10 bytes are supposed to keep the result.
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<unsigned int> distrib(0, 1);
+  for (int i = 0; i < 80; i++) {
+    const auto bit = distrib(gen);
+    vec.push_back(bit);
+    icecream_wbit(&s1, bit);
+  }
+  icecream_flush(&s1);
+
+  // Copy over the first 10 bytes, and test if the bits are the same.
+  auto mem2 = std::make_unique<char[]>(16);
+  for (int i = 0; i < 16; i++)
+    mem2[i] = 15;
+  std::memcpy(mem2.get(), mem.get(), 10);
+  icecream_use_mem(&s1, mem2.get(), 16);
+  for (int i = 0; i < 80; i++)
+    EXPECT_EQ(icecream_rbit(&s1), vec[i]) << " at idx = " << i;
 }
 
 
