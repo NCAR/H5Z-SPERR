@@ -2,7 +2,6 @@
 
 void icecream_use_mem(icecream* s, void* mem, size_t bytes) {
   s->begin = (uint64_t*)mem;
-  s->end = s->begin + bytes / 8;
   icecream_rewind(s);
 }
 

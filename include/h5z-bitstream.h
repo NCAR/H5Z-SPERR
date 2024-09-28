@@ -23,7 +23,6 @@
 
 struct h5z_bitstream{
   uint64_t* begin;  /* begin of the stream */
-  uint64_t* end;    /* end of the stream (not enforced) */
   uint64_t* ptr;    /* pointer to the next word to be read/written */
   uint64_t  buffer; /* incoming/outgoing bits */
   int       bits;   /* number of buffered bits (0 <= bits < 64) */
