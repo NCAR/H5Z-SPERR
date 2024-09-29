@@ -18,8 +18,8 @@
  *    a test at the beginning and records the test result.
  */
 
-#ifndef BITMASK_COMPACTOR_H
-#define BITMASK_COMPACTOR_H
+#ifndef COMPACTOR_H
+#define COMPACTOR_H
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -32,8 +32,19 @@
 /* Change this typedef to use different width. */
 typedef uint32_t INT;
 
-/* Given a chunk of memory `buf` with length `len` in bytes, return whether
- * all 0's or all 1's is more frequent. */
-int bitcpt_freq(const void* buf, size_t len);
+/* Return the compaction strategy to use:
+ * 0: compact with all 0's being the most frequent
+ * 1: compact with all 1's being the most frequent
+ * Note: only the first `bytes / sizeof(INT)` integers are evaluated. */
+int compactor_strategy(const void* buf, size_t bytes);
+
+/* Given a bitmask, compact it and return the useful size of the compacted mask.
+ * Note 1: the input bitmask length (in bytes) has to be a multiple of 8.
+ *         This requirement is inheritated from the bitstream implementation.
+ * Note 2: the output buffer should have space as big as the input mask,
+           the case of no compaction needed. */
+// size_t compactor_encode(const void* bitmask,
+//                         size_t bitmask_bytes,
+//                         void* compact_bitmask);
 
 #endif
