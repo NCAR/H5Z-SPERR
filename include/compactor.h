@@ -25,10 +25,6 @@
 #include <stdint.h>
 #include <assert.h>
 
-#ifndef NDEBUG
-#include <stdio.h>
-#endif
-
 /* Change this typedef to use different width. */
 typedef uint32_t INT;
 

@@ -1,6 +1,10 @@
 #include "compactor.h"
 #include <assert.h>
 
+#ifndef NDEBUG
+#include <stdio.h>
+#endif
+
 int compactor_strategy(const void* buf, size_t bytes)
 {
   assert(bytes % 8 == 0);
@@ -27,26 +31,30 @@ size_t compactor_comp_size(const void* buf, size_t bytes)
    */
   assert(bytes % 8 == 0);
 
-  INT most_freq = 0;
-  INT next_freq = ~most_freq;
-  if (compactor_strategy(buf, bytes)) {
-    next_freq = 0;
-    most_freq = ~next_freq;
-  }
-
-  size_t nbits = 1;
+  const INT all0 = 0;
+  const INT all1 = ~all0;
   const INT* p = (const INT*)buf;
+
+  size_t n0 = 0, n1 = 0;
   for (size_t i = 0; i < bytes / sizeof(INT); i++) {
     INT v = p[i];
-    if (v == most_freq)
-      nbits++;
-    else if (v == next_freq)
-      nbits += 2;
-    else
-      nbits += 2 + 8 * sizeof(INT);
+    n0 += (v == all0);
+    n1 += (v == all1);
   }
+  size_t nverb = bytes / sizeof(INT) - n0 - n1;
 
+  size_t nbits = 1;
+  if (n0 >= n1) {
+    nbits += n0;
+    nbits += n1 * 2;
+  }
+  else {
+    nbits += n1;
+    nbits += n0 * 2;
+  }
+  nbits += nverb * (2 + 8 * sizeof(INT));
   nbits += 2;
+
   size_t nbytes = (nbits + 7) / 8;
   return nbytes;
 }
