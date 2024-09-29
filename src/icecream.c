@@ -1,4 +1,4 @@
-#include "h5z-bitstream.h"
+#include "icecream.h"
 
 void icecream_use_mem(icecream* s, void* mem, size_t bytes) {
   s->begin = (uint64_t*)mem;

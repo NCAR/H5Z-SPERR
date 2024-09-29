@@ -4,12 +4,12 @@
 #include <random>
 
 extern "C" {
-#include "h5z-bitstream.h"
+#include "icecream.h"
 }
 
 namespace {
 
-TEST(bitstream, StreamWriteRead)
+TEST(icecream, StreamWriteRead)
 {
   const size_t N = 159;
   auto mem = std::make_unique<uint64_t[]>(4);
@@ -40,7 +40,7 @@ TEST(bitstream, StreamWriteRead)
   }
 }
 
-TEST(bitstream, PartialWord)
+TEST(icecream, PartialWord)
 {
   auto mem = std::make_unique<char[]>(20);
   auto s1 = icecream();

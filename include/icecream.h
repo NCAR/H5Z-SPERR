@@ -10,8 +10,8 @@
  * are named with a prefix `icecream`.
  */
 
-#ifndef H5Z_BITSTREAM_H
-#define H5Z_BITSTREAM_H
+#ifndef ICECREAM_H
+#define ICECREAM_H
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -21,13 +21,12 @@
 #include <stdio.h>
 #endif
 
-struct h5z_bitstream{
+typedef struct {
   uint64_t* begin;  /* begin of the stream */
   uint64_t* ptr;    /* pointer to the next word to be read/written */
   uint64_t  buffer; /* incoming/outgoing bits */
   int       bits;   /* number of buffered bits (0 <= bits < 64) */
-};
-typedef struct h5z_bitstream icecream;
+} icecream;
 
 /*
  * Specify a bitstream to use memory provided by users.
@@ -35,7 +34,7 @@ typedef struct h5z_bitstream icecream;
  * however, reading from or writing to the last incomplete word (i.e., the
  * last y bytes where y < 8) will result in memory errors.
  * For example, given a memory buffer of 20 bytes, it is only safe
- * to read or write to the first 16 bytes, or 16 x 8 = 128 bits.
+ * to read from or write to the first 16 bytes, or 16 x 8 = 128 bits.
  */
 void icecream_use_mem(icecream* s, void* mem, size_t bytes);
 
