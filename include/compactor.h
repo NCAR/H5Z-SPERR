@@ -35,14 +35,20 @@ typedef uint32_t INT;
 /* Return the compaction strategy to use:
  * 0: compact with all 0's being the most frequent
  * 1: compact with all 1's being the most frequent
- * Note: only the first `bytes / sizeof(INT)` integers are evaluated. */
+ * Note: `bytes` has to be a multiple of 8.
+ */
 int compactor_strategy(const void* buf, size_t bytes);
+
+/* Return the size in bytes of the compacted bitmask.
+ * Note: `bytes` has to be a multiple of 8.
+ */
+size_t compactor_comp_size(const void* buf, size_t bytes);
 
 /* Given a bitmask, compact it and return the useful size of the compacted mask.
  * Note 1: the input bitmask length (in bytes) has to be a multiple of 8.
  *         This requirement is inheritated from the bitstream implementation.
- * Note 2: the output buffer should have space as big as the input mask,
-           the case of no compaction needed. */
+ * Note 2: the output buffer length should be 1) a multiple of 8, and
+ *         2) no less than the size returned by `compactor_comp_size()`. */
 // size_t compactor_encode(const void* bitmask,
 //                         size_t bitmask_bytes,
 //                         void* compact_bitmask);
