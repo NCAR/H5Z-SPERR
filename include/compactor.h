@@ -12,8 +12,7 @@
  *    2.2. For an int with all 1's, use two bits: 10.
  *    2.3. For all other ints, use 34 bits: two bits 11 then followed by the
  *         verbose presentation of the 32-bit int.
- * 3. The encoding procedure finishes with two bits: 00.
- * 4. Obviously, it's the most economical to use a single 0 bit to present
+ * 3. Obviously, it's the most economical to use a single 0 bit to present
  *    the most frequent pattern (all 0's or all 1's). The encoder thus does
  *    a test at the beginning and records the test result.
  */
@@ -35,18 +34,29 @@ typedef uint32_t INT;
  */
 int compactor_strategy(const void* buf, size_t bytes);
 
-/* Return the size in bytes of the compacted bitmask.
+/* Return the size in bytes of the compacted bitstream.
  * Note: `bytes` has to be a multiple of 8.
  */
 size_t compactor_comp_size(const void* buf, size_t bytes);
 
-/* Given a bitmask, compact it and return the useful size of the compacted mask.
+/* Given a bitmask, compact it and return the useful size of the output
+ * bitstream, which is the same as the output of `compactor_comp_size()`.
  * Note 1: the input bitmask length (in bytes) has to be a multiple of 8.
  *         This requirement is inheritated from the bitstream implementation.
  * Note 2: the output buffer length should be 1) a multiple of 8, and
- *         2) no less than the size returned by `compactor_comp_size()`. */
-// size_t compactor_encode(const void* bitmask,
-//                         size_t bitmask_bytes,
-//                         void* compact_bitmask);
+ *         2) no less than the size returned by `compactor_comp_size()`.
+ */
+size_t compactor_encode(const void* bitmask,
+                        size_t bitmask_bytes,
+                        void* compact_bitstream,
+                        size_t compact_bitstream_bytes);
+
+/* Given a compact bitstream, decode it and return the number of useful bytes
+ * in the decoded bitmask.
+ * Note: `compact_bitstream_bytes` should be a multiple of 8.
+ */
+size_t compactor_decode(const void* compact_bitstream,
+                        size_t compact_bitstream_bytes,
+                        void* decoded_bitmask);
 
 #endif
