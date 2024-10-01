@@ -65,7 +65,35 @@ TEST(compactor, comp_size) {
   EXPECT_EQ(ans, 18);
 }
 
-TEST(compactor, coding)
+TEST(compactor, coding_all0_all1)
+{
+  // an array of all 0's
+  int nbytes = 128;  // 32 ints
+  auto buf = std::vector<unsigned char>(nbytes, 0);
+
+  // encode `buf`
+  auto encode = std::make_unique<unsigned char[]>(nbytes);
+  auto encode_len = compactor_encode(buf.data(), nbytes, encode.get(), nbytes);
+  EXPECT_EQ(encode_len, compactor_comp_size(buf.data(), nbytes));
+
+  // decode and test all 0's
+  auto decode = std::make_unique<unsigned char[]>(nbytes);
+  auto decode_len = compactor_decode(encode.get(), nbytes, decode.get());
+  EXPECT_EQ(decode_len, nbytes);
+  for (int i = 0; i < nbytes; i++)
+    ASSERT_EQ(decode[i], 0) << "i = " << i;
+
+  // assign the entire array to be all 1's, and test again
+  buf.assign(nbytes, 255);
+  encode_len = compactor_encode(buf.data(), nbytes, encode.get(), nbytes);
+  EXPECT_EQ(encode_len, compactor_comp_size(buf.data(), nbytes));
+  decode_len = compactor_decode(encode.get(), nbytes, decode.get());
+  EXPECT_EQ(decode_len, nbytes);
+  for (int i = 0; i < nbytes; i++)
+    ASSERT_EQ(decode[i], 255) << "i = " << i;
+}
+
+TEST(compactor, coding_mixed)
 {
   int nbytes = 64;  // 16 ints
   auto buf = std::vector<unsigned char>(nbytes, 0);
