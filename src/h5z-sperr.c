@@ -101,6 +101,8 @@ static htri_t H5Z_can_apply_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
 /*
  * Pack information about the input data into an `unsigned int`.
  * It returns the encoded unsigned int, which shouldn't be zero.
+ * This function is called by `set_local()` to prepare information
+ * for `H5Z_filter_sperr()`.
  */
 static unsigned int H5Z_SPERR_pack_data_type(int rank,  /* Input */
                                              int dtype) /* Input */
@@ -133,7 +135,8 @@ static unsigned int H5Z_SPERR_pack_data_type(int rank,  /* Input */
 }
 
 /*
- * Unpack information about the input data from an `unsigned int`.
+ * Unpack information that was packed by `H5Z_SPERR_pack_data_type()`.
+ * This function is called by `H5Z_filter_sperr()`.
  */
 static void H5Z_SPERR_unpack_data_type(unsigned int meta, /* Input  */
                                        int* rank,         /* Output */
@@ -172,21 +175,74 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
    * 	space_id  Dataspace identifier
    */
 
-  /* Get the user-specified compression mode and quality. */
-  size_t user_cd_nelem = 2;
-  unsigned int user_cd_values[2] = {0, 0}; /* !! The same length as `user_cd_nelem` specified !! */
+  /*
+   * Get the user-specified parameters. It has mandatory and optional fields.
+   * -- One integer (mandatory): compression mode, quality, rank swap
+   * -- One integer (optional) : missing value mode
+   * -- One/two integers (optional): a float or double specifying the missing value
+   */
+  size_t user_cd_nelem = 4; /* the maximum possible number */
+  unsigned int user_cd_values[4] = {0, 0, 0, 0};
   char name[16];
   for (size_t i = 0; i < 16; i++)
     name[i] = ' ';
-  unsigned int flags = 0;
+  unsigned int flags = 0, filter_config = 0;
   herr_t status = H5Pget_filter_by_id(dcpl_id, H5Z_FILTER_SPERR, &flags, &user_cd_nelem,
-                                      user_cd_values, 16, name, user_cd_values + user_cd_nelem - 1);
-  if (user_cd_nelem != 1) {
+                                      user_cd_values, 16, name, &filter_config);
+
+  /*
+   * `missing_val_mode` meaning:
+   * 0: no missing value
+   * 1: any NAN is a missing value
+   * 2: any value where abs(value) >= 1e35 is a missing value.
+   * 3: use a single 32-bit float as the missing value.
+   * 4: use a single 64-bit double as the missing value.
+   */
+  int missing_val_mode = 0;
+  float missing_val_f = 0.0f;
+  double missing_val_d = 0.0;
+  if (user_cd_nelem == 1) {}
+  else if (user_cd_nelem == 2) {
+    missing_val_mode = user_cd_vals[1];
+    if (missing_val_mode > 2) {
+#ifndef NDEBUG
+      printf("%s: %d, user_cd_nelem = %lu\n", __FILE__, __LINE__, user_cd_nelem);
+#endif
+      H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADSIZE,
+              "User cd_values[] isn't valid.");
+      return -1;
+    }
+  }
+  else if (user_cd_nelem == 3) {
+    missing_val_mode = user_cd_vals[1];
+    memcpy(&missing_val_f, &user_cd_vals[2], sizeof(missing_val_f));
+    if (missing_val_mode != 3) {
+#ifndef NDEBUG
+      printf("%s: %d, user_cd_nelem = %lu\n", __FILE__, __LINE__, user_cd_nelem);
+#endif
+      H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADSIZE,
+              "User cd_values[] isn't valid.");
+      return -1;
+    }
+  }
+  else if (user_cd_nelem == 4) {
+    missing_val_mode = user_cd_vals[1];
+    memcpy(&missing_val_d, &user_cd_vals[2], sizeof(missing_val_d));
+    if (missing_val_mode != 4) {
+#ifndef NDEBUG
+      printf("%s: %d, user_cd_nelem = %lu\n", __FILE__, __LINE__, user_cd_nelem);
+#endif
+      H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADSIZE,
+              "User cd_values[] isn't valid.");
+      return -1;
+    }
+  }
+  else {
 #ifndef NDEBUG
     printf("%s: %d, user_cd_nelem = %lu\n", __FILE__, __LINE__, user_cd_nelem);
 #endif
     H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADSIZE,
-            "User cd_values[] isn't a single element ??");
+            "User cd_values[] has more than 4 elements.");
     return -1;
   }
 
