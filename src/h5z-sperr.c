@@ -1,3 +1,13 @@
+/*
+ * This file contains the SPERR filter class definition, H5Z_SPERR_class_t,
+ * and necessary functions required by the HDF5 plugin architecture:
+ * - can_apply()
+ * - set_local()
+ * - filter()
+ * - get_plugin_info()
+ * - get_plugin_type()
+ */
+
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,6 +17,7 @@
 
 #include <SPERR_C_API.h>
 #include "h5z-sperr.h"
+#include "h5zsperr_helper.h"
 
 #ifndef NDEBUG
 #include <stdio.h>
@@ -98,75 +109,6 @@ static htri_t H5Z_can_apply_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
   return 1;
 }
 
-/*
- * Pack information about the input data into an `unsigned int`.
- * It returns the encoded unsigned int, which shouldn't be zero.
- * This function is called by `set_local()` to prepare information
- * for `H5Z_filter_sperr()`.
- */
-static unsigned int H5Z_SPERR_pack_data_type(int rank,  /* Input */
-                                             int dtype) /* Input */
-{
-  unsigned int ret = 0;
-
-  /*
-   * Bit position 0-3 to encode the rank.
-   * Since this function is called from `set_local()`, it should always be 2 or 3.
-   */
-  if (rank == 2) {
-    ret |= 1u << 1; /* Position 1 */
-  }
-  else {
-    assert(rank == 3);
-    ret |= 1u;      /* Position 0 */
-    ret |= 1u << 1; /* Position 1 */
-  }
-
-  /*
-   * Bit position 4-7 encode data type.
-   * Only float (1) and double (0) are supported right now.
-   */
-  if (dtype == 1)   /* is_float   */
-    ret |= 1u << 4; /* Position 4 */
-  else
-    assert(dtype == 0);
-
-  return ret;
-}
-
-/*
- * Unpack information that was packed by `H5Z_SPERR_pack_data_type()`.
- * This function is called by `H5Z_filter_sperr()`.
- */
-static void H5Z_SPERR_unpack_data_type(unsigned int meta, /* Input  */
-                                       int* rank,         /* Output */
-                                       int* dtype)        /* Output */
-{
-  /*
-   * Extract rank from bit positions 0-3.
-   */
-  unsigned pos0 = meta & 1u;
-  unsigned pos1 = meta & (1u << 1);
-  if (!pos0 && pos1)
-    *rank = 2;
-  else if (pos0 && pos1)
-    *rank = 3;
-  else { /* error */
-    H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADVALUE,
-            "Rank is not 2 or 3.");
-  }
-
-  /*
-   * Extract data type from position 4-7.
-   * Only float and double are supported right now.
-   */
-  unsigned pos4 = meta & (1u << 4);
-  if (pos4)
-    *dtype = 1; /* is_float  */
-  else
-    *dtype = 0; /* is_double */
-}
-
 static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
 {
   /*
@@ -203,7 +145,7 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
   double missing_val_d = 0.0;
   if (user_cd_nelem == 1) {}
   else if (user_cd_nelem == 2) {
-    missing_val_mode = user_cd_vals[1];
+    missing_val_mode = user_cd_values[1];
     if (missing_val_mode > 2) {
 #ifndef NDEBUG
       printf("%s: %d, user_cd_nelem = %lu\n", __FILE__, __LINE__, user_cd_nelem);
@@ -214,8 +156,8 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
     }
   }
   else if (user_cd_nelem == 3) {
-    missing_val_mode = user_cd_vals[1];
-    memcpy(&missing_val_f, &user_cd_vals[2], sizeof(missing_val_f));
+    missing_val_mode = user_cd_values[1];
+    memcpy(&missing_val_f, &user_cd_values[2], sizeof(missing_val_f));
     if (missing_val_mode != 3) {
 #ifndef NDEBUG
       printf("%s: %d, user_cd_nelem = %lu\n", __FILE__, __LINE__, user_cd_nelem);
@@ -226,8 +168,8 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
     }
   }
   else if (user_cd_nelem == 4) {
-    missing_val_mode = user_cd_vals[1];
-    memcpy(&missing_val_d, &user_cd_vals[2], sizeof(missing_val_d));
+    missing_val_mode = user_cd_values[1];
+    memcpy(&missing_val_d, &user_cd_values[2], sizeof(missing_val_d));
     if (missing_val_mode != 4) {
 #ifndef NDEBUG
       printf("%s: %d, user_cd_nelem = %lu\n", __FILE__, __LINE__, user_cd_nelem);
@@ -270,7 +212,7 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
    * [2-4]: (dimx, dimy, dimz) in 3D cases.
    */
   unsigned int cd_values[5] = {0, 0, 0, 0, 0};
-  cd_values[0] = H5Z_SPERR_pack_data_type(real_dims, is_float);
+  cd_values[0] = h5zsperr_pack_data_type(real_dims, is_float);
   cd_values[1] = user_cd_values[0];
   int i1 = 2, i2 = 0;
   while (i2 < 4) {
@@ -295,7 +237,7 @@ static size_t H5Z_filter_sperr(unsigned int flags,
 {
   /* Extract info from cd_values[] */
   int rank = 0, is_float = 0;
-  H5Z_SPERR_unpack_data_type(cd_values[0], &rank, &is_float);
+  h5zsperr_unpack_data_type(cd_values[0], &rank, &is_float);
   if ((rank == 2 && cd_nelmts != 4) || (rank == 3 && cd_nelmts != 5)) {
 #ifndef NDEBUG
     printf("rank = %d, cd_nelmts = %lu\n", rank, cd_nelmts);
