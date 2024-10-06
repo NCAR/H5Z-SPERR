@@ -15,8 +15,8 @@
  * The packing function is called by `set_local()` to prepare information
  * for `H5Z_filter_sperr()`, which calls the unpack function.
  */
-unsigned int h5zsperr_pack_data_type(int rank, int is_float);
-void h5zsperr_unpack_data_type(unsigned int meta, int* rank, int* is_float);
+unsigned int h5zsperr_pack_data_type(int rank, int is_float, int missing_val_mode);
+void h5zsperr_unpack_data_type(unsigned int meta, int* rank, int* is_float, int* missing_val_mode);
 
 /*
  * Check if an input array really has missing values.
