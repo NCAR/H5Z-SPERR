@@ -210,9 +210,9 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
    * [1]  : compression specifics
    * [2-3]: (dimx, dimy) in 2D cases.
    * [2-4]: (dimx, dimy, dimz) in 3D cases.
-   * Followed by 0, 1, or 2 integers storing possible missing values.
+   * Followed by 0, 1, or 2 integers storing the exact missing value.
    */
-  unsigned int cd_values[5] = {0, 0, 0, 0, 0};
+  unsigned int cd_values[7] = {0, 0, 0, 0, 0, 0, 0};
   cd_values[0] = h5zsperr_pack_data_type(real_dims, is_float, missing_val_mode);
   cd_values[1] = user_cd_values[0];
   int i1 = 2, i2 = 0;
@@ -221,10 +221,19 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
       cd_values[i1++] = (unsigned int)chunks[i2];
     i2++;
   }
-  if (real_dims == 2)
-    H5Pmodify_filter(dcpl_id, H5Z_FILTER_SPERR, H5Z_FLAG_MANDATORY, 4, cd_values);
-  else
-    H5Pmodify_filter(dcpl_id, H5Z_FILTER_SPERR, H5Z_FLAG_MANDATORY, 5, cd_values);
+
+  /* figure out the length of cd_values[] */
+  size_t cd_nelems = real_dims == 2 ? 4 : 5;
+  if (missing_val_mode == 3) {
+    cd_nelems += 1;
+    memcpy(&cd_values[i1], &missing_val_f, sizeof(missing_val_f));
+  }
+  else if (missing_val_mode == 4) {
+    cd_nelems += 2;
+    memcpy(&cd_values[i1], &missing_val_d, sizeof(missing_val_d));
+  }
+
+  H5Pmodify_filter(dcpl_id, H5Z_FILTER_SPERR, H5Z_FLAG_MANDATORY, cd_nelems, cd_values);
 
   return 0;
 }
@@ -239,14 +248,15 @@ static size_t H5Z_filter_sperr(unsigned int flags,
   /* Extract info from cd_values[] */
   int rank = 0, is_float = 0, missing_val_mode = 0;
   h5zsperr_unpack_data_type(cd_values[0], &rank, &is_float, &missing_val_mode);
-  if ((rank == 2 && cd_nelmts != 4) || (rank == 3 && cd_nelmts != 5)) {
-#ifndef NDEBUG
-    printf("rank = %d, cd_nelmts = %lu\n", rank, cd_nelmts);
-#endif
-    H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADVALUE,
-            "SPERR filter cd_values[] length not correct.");
-    return 0;
-  }
+  assert(rank == 2 || rank == 3);
+  assert(is_float == 0 || is_float == 1);
+  assert(missing_val_mode >= 0 && missing_val_mode <= 4);
+  if (missing_val_mode <= 2)
+    assert(cd_nelmts == (rank == 2 ? 4 : 5));
+  else if (missing_val_mode == 3)
+    assert(cd_nelmts == (rank == 2 ? 5 : 6));
+  else  /* missing_val_mode == 4 */
+    assert(cd_nelmts == (rank == 2 ? 6 : 7));
 
   int mode = 0, swap = 0;
   double quality = 0.0;
@@ -264,6 +274,17 @@ static size_t H5Z_filter_sperr(unsigned int flags,
       dims[2] = tmp;
     }
   }
+
+  int cd_val_offset = 4;
+  if (rank == 3)
+    cd_val_offset = 5;
+
+  float missing_val_f = 0.f;
+  double missing_val_d = 0.0;
+  if (missing_val_mode == 3)
+    memcpy(&missing_val_f, &cd_values[cd_val_offset], sizeof(missing_val_f));
+  else if (missing_val_mode == 4)
+    memcpy(&missing_val_d, &cd_values[cd_val_offset], sizeof(missing_val_d));
 
   /* Decompression */
   if (flags & H5Z_FLAG_REVERSE) {
