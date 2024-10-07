@@ -1,3 +1,13 @@
+/*
+ * This file contains the SPERR filter class definition, H5Z_SPERR_class_t,
+ * and necessary functions required by the HDF5 plugin architecture:
+ * - can_apply()
+ * - set_local()
+ * - filter()
+ * - get_plugin_info()
+ * - get_plugin_type()
+ */
+
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,6 +17,7 @@
 
 #include <SPERR_C_API.h>
 #include "h5z-sperr.h"
+#include "h5zsperr_helper.h"
 
 #ifndef NDEBUG
 #include <stdio.h>
@@ -98,72 +109,6 @@ static htri_t H5Z_can_apply_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
   return 1;
 }
 
-/*
- * Pack information about the input data into an `unsigned int`.
- * It returns the encoded unsigned int, which shouldn't be zero.
- */
-static unsigned int H5Z_SPERR_pack_data_type(int rank,  /* Input */
-                                             int dtype) /* Input */
-{
-  unsigned int ret = 0;
-
-  /*
-   * Bit position 0-3 to encode the rank.
-   * Since this function is called from `set_local()`, it should always be 2 or 3.
-   */
-  if (rank == 2) {
-    ret |= 1u << 1; /* Position 1 */
-  }
-  else {
-    assert(rank == 3);
-    ret |= 1u;      /* Position 0 */
-    ret |= 1u << 1; /* Position 1 */
-  }
-
-  /*
-   * Bit position 4-7 encode data type.
-   * Only float (1) and double (0) are supported right now.
-   */
-  if (dtype == 1)   /* is_float   */
-    ret |= 1u << 4; /* Position 4 */
-  else
-    assert(dtype == 0);
-
-  return ret;
-}
-
-/*
- * Unpack information about the input data from an `unsigned int`.
- */
-static void H5Z_SPERR_unpack_data_type(unsigned int meta, /* Input  */
-                                       int* rank,         /* Output */
-                                       int* dtype)        /* Output */
-{
-  /*
-   * Extract rank from bit positions 0-3.
-   */
-  unsigned pos0 = meta & 1u;
-  unsigned pos1 = meta & (1u << 1);
-  if (!pos0 && pos1)
-    *rank = 2;
-  else if (pos0 && pos1)
-    *rank = 3;
-  else { /* error */
-    H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADVALUE,
-            "Rank is not 2 or 3.");
-  }
-
-  /*
-   * Extract data type from position 4-7.
-   * Only float and double are supported right now.
-   */
-  unsigned pos4 = meta & (1u << 4);
-  if (pos4)
-    *dtype = 1; /* is_float  */
-  else
-    *dtype = 0; /* is_double */
-}
-
 static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
 {
   /*
@@ -172,21 +117,74 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
    * 	space_id  Dataspace identifier
    */
 
-  /* Get the user-specified compression mode and quality. */
-  size_t user_cd_nelem = 2;
-  unsigned int user_cd_values[2] = {0, 0}; /* !! The same length as `user_cd_nelem` specified !! */
+  /*
+   * Get the user-specified parameters. It has mandatory and optional fields.
+   * -- One integer (mandatory): compression mode, quality, rank swap
+   * -- One integer (optional) : missing value mode
+   * -- One/two integers (optional): a float or double specifying the missing value
+   */
+  size_t user_cd_nelem = 4; /* the maximum possible number */
+  unsigned int user_cd_values[4] = {0, 0, 0, 0};
   char name[16];
   for (size_t i = 0; i < 16; i++)
     name[i] = ' ';
-  unsigned int flags = 0;
+  unsigned int flags = 0, filter_config = 0;
   herr_t status = H5Pget_filter_by_id(dcpl_id, H5Z_FILTER_SPERR, &flags, &user_cd_nelem,
-                                      user_cd_values, 16, name, user_cd_values + user_cd_nelem - 1);
-  if (user_cd_nelem != 1) {
+                                      user_cd_values, 16, name, &filter_config);
+
+  /*
+   * `missing_val_mode` meaning:
+   * 0: no missing value
+   * 1: any NAN is a missing value
+   * 2: any value where abs(value) >= 1e35 is a missing value.
+   * 3: use a single 32-bit float as the missing value.
+   * 4: use a single 64-bit double as the missing value.
+   */
+  int missing_val_mode = 0;
+  float missing_val_f = 0.0f;
+  double missing_val_d = 0.0;
+  if (user_cd_nelem == 1) {}
+  else if (user_cd_nelem == 2) {
+    missing_val_mode = user_cd_values[1];
+    if (missing_val_mode > 2) {
+#ifndef NDEBUG
+      printf("%s: %d, user_cd_nelem = %lu\n", __FILE__, __LINE__, user_cd_nelem);
+#endif
+      H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADSIZE,
+              "User cd_values[] isn't valid.");
+      return -1;
+    }
+  }
+  else if (user_cd_nelem == 3) {
+    missing_val_mode = user_cd_values[1];
+    memcpy(&missing_val_f, &user_cd_values[2], sizeof(missing_val_f));
+    if (missing_val_mode != 3) {
+#ifndef NDEBUG
+      printf("%s: %d, user_cd_nelem = %lu\n", __FILE__, __LINE__, user_cd_nelem);
+#endif
+      H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADSIZE,
+              "User cd_values[] isn't valid.");
+      return -1;
+    }
+  }
+  else if (user_cd_nelem == 4) {
+    missing_val_mode = user_cd_values[1];
+    memcpy(&missing_val_d, &user_cd_values[2], sizeof(missing_val_d));
+    if (missing_val_mode != 4) {
+#ifndef NDEBUG
+      printf("%s: %d, user_cd_nelem = %lu\n", __FILE__, __LINE__, user_cd_nelem);
+#endif
+      H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADSIZE,
+              "User cd_values[] isn't valid.");
+      return -1;
+    }
+  }
+  else {
 #ifndef NDEBUG
     printf("%s: %d, user_cd_nelem = %lu\n", __FILE__, __LINE__, user_cd_nelem);
 #endif
     H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADSIZE,
-            "User cd_values[] isn't a single element ??");
+            "User cd_values[] has more than 4 elements.");
     return -1;
   }
 
@@ -208,13 +206,14 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
 
   /*
    * Assemble the meta info to be stored.
-   * [0]  : 2D/3D, float/double
+   * [0]  : 2D/3D, float/double, missing_val specifics
    * [1]  : compression specifics
    * [2-3]: (dimx, dimy) in 2D cases.
    * [2-4]: (dimx, dimy, dimz) in 3D cases.
+   * Followed by 0, 1, or 2 integers storing the exact missing value.
    */
-  unsigned int cd_values[5] = {0, 0, 0, 0, 0};
-  cd_values[0] = H5Z_SPERR_pack_data_type(real_dims, is_float);
+  unsigned int cd_values[7] = {0, 0, 0, 0, 0, 0, 0};
+  cd_values[0] = h5zsperr_pack_data_type(real_dims, is_float, missing_val_mode);
   cd_values[1] = user_cd_values[0];
   int i1 = 2, i2 = 0;
   while (i2 < 4) {
@@ -222,10 +221,19 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
       cd_values[i1++] = (unsigned int)chunks[i2];
     i2++;
   }
-  if (real_dims == 2)
-    H5Pmodify_filter(dcpl_id, H5Z_FILTER_SPERR, H5Z_FLAG_MANDATORY, 4, cd_values);
-  else
-    H5Pmodify_filter(dcpl_id, H5Z_FILTER_SPERR, H5Z_FLAG_MANDATORY, 5, cd_values);
+
+  /* figure out the length of cd_values[] */
+  size_t cd_nelems = real_dims == 2 ? 4 : 5;
+  if (missing_val_mode == 3) {
+    cd_nelems += 1;
+    memcpy(&cd_values[i1], &missing_val_f, sizeof(missing_val_f));
+  }
+  else if (missing_val_mode == 4) {
+    cd_nelems += 2;
+    memcpy(&cd_values[i1], &missing_val_d, sizeof(missing_val_d));
+  }
+
+  H5Pmodify_filter(dcpl_id, H5Z_FILTER_SPERR, H5Z_FLAG_MANDATORY, cd_nelems, cd_values);
 
   return 0;
 }
@@ -238,16 +246,17 @@ static size_t H5Z_filter_sperr(unsigned int flags,
                                void** buf)
 {
   /* Extract info from cd_values[] */
-  int rank = 0, is_float = 0;
-  H5Z_SPERR_unpack_data_type(cd_values[0], &rank, &is_float);
-  if ((rank == 2 && cd_nelmts != 4) || (rank == 3 && cd_nelmts != 5)) {
-#ifndef NDEBUG
-    printf("rank = %d, cd_nelmts = %lu\n", rank, cd_nelmts);
-#endif
-    H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADVALUE,
-            "SPERR filter cd_values[] length not correct.");
-    return 0;
-  }
+  int rank = 0, is_float = 0, missing_val_mode = 0;
+  h5zsperr_unpack_data_type(cd_values[0], &rank, &is_float, &missing_val_mode);
+  assert(rank == 2 || rank == 3);
+  assert(is_float == 0 || is_float == 1);
+  assert(missing_val_mode >= 0 && missing_val_mode <= 4);
+  if (missing_val_mode <= 2)
+    assert(cd_nelmts == (rank == 2 ? 4 : 5));
+  else if (missing_val_mode == 3)
+    assert(cd_nelmts == (rank == 2 ? 5 : 6));
+  else  /* missing_val_mode == 4 */
+    assert(cd_nelmts == (rank == 2 ? 6 : 7));
 
   int mode = 0, swap = 0;
   double quality = 0.0;
@@ -265,6 +274,17 @@ static size_t H5Z_filter_sperr(unsigned int flags,
       dims[2] = tmp;
     }
   }
+
+  int cd_val_offset = 4;
+  if (rank == 3)
+    cd_val_offset = 5;
+
+  float missing_val_f = 0.f;
+  double missing_val_d = 0.0;
+  if (missing_val_mode == 3)
+    memcpy(&missing_val_f, &cd_values[cd_val_offset], sizeof(missing_val_f));
+  else if (missing_val_mode == 4)
+    memcpy(&missing_val_d, &cd_values[cd_val_offset], sizeof(missing_val_d));
 
   /* Decompression */
   if (flags & H5Z_FLAG_REVERSE) {

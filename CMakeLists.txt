@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.14)
 
-project(H5Z-MD5 VERSION 0.1.3 LANGUAGES C DESCRIPTION "HDF5 plugin for SPERR compression")
+project(H5Z-SPERR VERSION 0.1.3 LANGUAGES C CXX DESCRIPTION "HDF5 plugin for SPERR compression")
 
 set(CMAKE_C_STANDARD 11)
 if(NOT CMAKE_BUILD_TYPE)
@@ -10,6 +10,7 @@ endif()
 
 option( BUILD_SHARED_LIBS "Build shared libraries" ON )
 option( BUILD_CLI_UTILITIES "Build a set of command line utilities" ON )
+option( BUILD_UNIT_TESTS "Build unit tests using GoogleTest" OFF )
 option( H5ZPLUGIN_PREFER_RPATH "Set RPATH; this can fight with package managers 
                                 so turn off when building for them" ON )
 mark_as_advanced(FORCE H5ZPLUGIN_PREFER_RPATH)
@@ -40,6 +41,34 @@ add_subdirectory( src )
 #
 if( BUILD_CLI_UTILITIES )
   add_subdirectory( utilities ${CMAKE_BINARY_DIR}/bin )
+endif()
+
+#
+# Build unit tests
+#
+if( BUILD_UNIT_TESTS )
+  # Control internal options of GoogleTest
+  #
+  set( INSTALL_GTEST OFF CACHE INTERNAL "Not install GoogleTest")
+  set( BUILD_GMOCK ON CACHE INTERNAL "Build gmock")
+
+  # Let's use the new mechanism to incorporate GoogleTest
+  #
+  include(FetchContent)
+  if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.24")
+    FetchContent_Declare( googletest
+      URL https://github.com/google/googletest/archive/refs/heads/main.zip
+      DOWNLOAD_EXTRACT_TIMESTAMP NEW )
+  endif()
+
+  # Prevent overriding the parent project's compiler/linker settings on Windows
+  #
+  set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+  FetchContent_MakeAvailable(googletest)
+
+  enable_testing() # calling this function before adding subdirectory to enable 
+                   # invoking ctest from the top-level build directory.
+  add_subdirectory( test_scripts )
 endif()
 
 #
