@@ -7,7 +7,8 @@
 
 #include <stdlib.h>
 
-#define LARGE_MAGNITUDE 1e35
+#define LARGE_MAGNITUDE_F 1e35f
+#define LARGE_MAGNITUDE_D 1e35
 
 /*
  * Pack and unpack additional information about the input data into an integer.

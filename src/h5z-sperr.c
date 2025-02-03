@@ -143,7 +143,7 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
   int missing_val_mode = 0;
   float missing_val_f = 0.0f;
   double missing_val_d = 0.0;
-  if (user_cd_nelem == 1) {}
+  if (user_cd_nelem == 1) {}  /* not providing missing value mode */
   else if (user_cd_nelem == 2) {
     missing_val_mode = user_cd_values[1];
     if (missing_val_mode > 2) {
@@ -157,7 +157,6 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
   }
   else if (user_cd_nelem == 3) {
     missing_val_mode = user_cd_values[1];
-    memcpy(&missing_val_f, &user_cd_values[2], sizeof(missing_val_f));
     if (missing_val_mode != 3) {
 #ifndef NDEBUG
       printf("%s: %d, user_cd_nelem = %lu\n", __FILE__, __LINE__, user_cd_nelem);
@@ -166,10 +165,10 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
               "User cd_values[] isn't valid.");
       return -1;
     }
+    memcpy(&missing_val_f, &user_cd_values[2], sizeof(missing_val_f));
   }
   else if (user_cd_nelem == 4) {
     missing_val_mode = user_cd_values[1];
-    memcpy(&missing_val_d, &user_cd_values[2], sizeof(missing_val_d));
     if (missing_val_mode != 4) {
 #ifndef NDEBUG
       printf("%s: %d, user_cd_nelem = %lu\n", __FILE__, __LINE__, user_cd_nelem);
@@ -178,6 +177,7 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
               "User cd_values[] isn't valid.");
       return -1;
     }
+    memcpy(&missing_val_d, &user_cd_values[2], sizeof(missing_val_d));
   }
   else {
 #ifndef NDEBUG
@@ -207,7 +207,7 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
   /*
    * Assemble the meta info to be stored.
    * [0]  : 2D/3D, float/double, missing_val specifics
-   * [1]  : compression specifics
+   * [1]  : compression specifics (user input)
    * [2-3]: (dimx, dimy) in 2D cases.
    * [2-4]: (dimx, dimy, dimz) in 3D cases.
    * Followed by 0, 1, or 2 integers storing the exact missing value.
@@ -224,11 +224,11 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
 
   /* figure out the length of cd_values[] */
   size_t cd_nelems = real_dims == 2 ? 4 : 5;
-  if (missing_val_mode == 3) {
+  if (missing_val_mode == 3) {  /* a specific float */
     cd_nelems += 1;
     memcpy(&cd_values[i1], &missing_val_f, sizeof(missing_val_f));
   }
-  else if (missing_val_mode == 4) {
+  else if (missing_val_mode == 4) {  /* a specific double */
     cd_nelems += 2;
     memcpy(&cd_values[i1], &missing_val_d, sizeof(missing_val_d));
   }
@@ -258,18 +258,17 @@ static size_t H5Z_filter_sperr(unsigned int flags,
   else  /* missing_val_mode == 4 */
     assert(cd_nelmts == (rank == 2 ? 6 : 7));
 
-  int mode = 0, swap = 0;
+  int comp_mode = 0, swap = 0;
   double quality = 0.0;
-  H5Z_SPERR_decode_cd_values(cd_values[1], &mode, &quality, &swap);
+  H5Z_SPERR_decode_cd_values(cd_values[1], &comp_mode, &quality, &swap);
   unsigned int dims[3] = {cd_values[2], cd_values[3], rank == 2 ? 1 : cd_values[4]};
   if (swap) {
+    unsigned int tmp = dims[0];
     if (rank == 2) {
-      unsigned int tmp = dims[0];
       dims[0] = dims[1];
       dims[1] = tmp;
     }
     else {
-      unsigned int tmp = dims[0];
       dims[0] = dims[2];
       dims[2] = tmp;
     }
@@ -335,10 +334,10 @@ static size_t H5Z_filter_sperr(unsigned int flags,
     int ret = 0;
 
     if (rank == 2)
-      ret = sperr_comp_2d(*buf, is_float, dims[0], dims[1], mode, quality, 0, &dst, &dst_len);
+      ret = sperr_comp_2d(*buf, is_float, dims[0], dims[1], comp_mode, quality, 0, &dst, &dst_len);
     else
       ret = sperr_comp_3d(*buf, is_float, dims[0], dims[1], dims[2], dims[0], dims[1], dims[2],
-                          mode, quality, 1, &dst, &dst_len);
+                          comp_mode, quality, 1, &dst, &dst_len);
     if (ret != 0) {
       if (dst) {
         free(dst); /* allocated by SPERR, using malloc() */

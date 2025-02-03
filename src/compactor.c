@@ -160,8 +160,8 @@ size_t compactor_decode(const void* compact_bitstream,
         INT v = 0;
         for (int j = 0; j < 8 * sizeof(INT); j++) {
           assert(icecream_rtell(&in) < nbits);
-          INT bit = icecream_rbit(&in);
-          v |= bit << j;
+          bit = icecream_rbit(&in);
+          v |= (INT)bit << j;
         }
         *p++ = v;
       }
@@ -170,7 +170,3 @@ size_t compactor_decode(const void* compact_bitstream,
 
   return (p - (INT*)decoded_bitmask) * sizeof(INT);
 }
-
-
-
-

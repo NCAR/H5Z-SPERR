@@ -24,7 +24,7 @@
 #include <stdint.h>
 #include <assert.h>
 
-/* Change this typedef to use different width. */
+/* Change this typedef to use a different width. */
 typedef uint32_t INT;
 
 /* Return the compaction strategy to use:
@@ -40,7 +40,7 @@ int compactor_strategy(const void* buf, size_t bytes);
 size_t compactor_comp_size(const void* buf, size_t bytes);
 
 /* Given a bitmask, compact it and return the useful size of the output
- * bitstream, which is the same as the output of `compactor_comp_size()`.
+ * bitstream, which has the same length as the output of `compactor_comp_size()`.
  * Note 1: the input bitmask length (in bytes) has to be a multiple of 8.
  *         This requirement is inheritated from the bitstream implementation.
  * Note 2: the output buffer length should be 1) a multiple of 8, and

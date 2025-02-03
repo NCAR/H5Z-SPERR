@@ -84,13 +84,13 @@ int h5zsperr_has_large_mag(const void* buf, size_t nelem, int is_float)
   if (is_float) {
     const float* p = (const float*)buf;
     for (size_t i = 0; i < nelem; i++)
-      if (fabsf(p[i]) >= LARGE_MAGNITUDE)
+      if (fabsf(p[i]) >= LARGE_MAGNITUDE_F)
         return 1;
   }
   else {
     const double* p = (const double*)buf;
     for (size_t i = 0; i < nelem; i++)
-      if (fabs(p[i]) >= LARGE_MAGNITUDE)
+      if (fabs(p[i]) >= LARGE_MAGNITUDE_D)
         return 1;
   }
 

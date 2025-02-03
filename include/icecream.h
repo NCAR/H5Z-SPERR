@@ -6,7 +6,7 @@
  * any memory; it reads a bit sequence from a user-provided memory buffer,
  * or writes a bit sequence to a user-provided memory buffer.
  * 
- * The "object" is named `h5z_bitstream` and all functions operating on it
+ * The "object" is named `icecream` and all functions operating on it
  * are named with a prefix `icecream`.
  */
 
