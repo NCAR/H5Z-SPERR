@@ -16,8 +16,8 @@ TEST(h5zsperr_helper, pack_extra_info)
         rank = r * f * m + 10;
         is_float = rank + 10;
         mode = rank + 20;
-        auto encode = h5zsperr_pack_extra_info(r, f, m);
-        h5zsperr_unpack_extra_info(encode, &rank, &is_float, &mode);
+        auto encode = C_API::h5zsperr_pack_extra_info(r, f, m);
+        C_API::h5zsperr_unpack_extra_info(encode, &rank, &is_float, &mode);
         ASSERT_EQ(rank, r);
         ASSERT_EQ(is_float, f);
         ASSERT_EQ(mode, m);

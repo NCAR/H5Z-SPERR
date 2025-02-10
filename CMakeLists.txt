@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.14)
 project(H5Z-SPERR VERSION 0.1.3 LANGUAGES C CXX DESCRIPTION "HDF5 plugin for SPERR compression")
 
 set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build." FORCE)
     set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "RelWithDebInfo")

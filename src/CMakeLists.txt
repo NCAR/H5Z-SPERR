@@ -1,5 +1,5 @@
 add_library( h5z-sperr h5z-sperr.c
-                       h5zsperr_helper.c
+                       h5zsperr_helper.cpp
                        icecream.c
                        compactor.c)
 target_include_directories( h5z-sperr PUBLIC ${HDF5_INCLUDE_DIR} 
