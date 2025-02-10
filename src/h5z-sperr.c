@@ -213,7 +213,7 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
    * Followed by 0, 1, or 2 integers storing the exact missing value.
    */
   unsigned int cd_values[7] = {0, 0, 0, 0, 0, 0, 0};
-  cd_values[0] = h5zsperr_pack_data_type(real_dims, is_float, missing_val_mode);
+  cd_values[0] = h5zsperr_pack_extra_info(real_dims, is_float, missing_val_mode);
   cd_values[1] = user_cd_values[0];
   int i1 = 2, i2 = 0;
   while (i2 < 4) {
@@ -247,7 +247,7 @@ static size_t H5Z_filter_sperr(unsigned int flags,
 {
   /* Extract info from cd_values[] */
   int rank = 0, is_float = 0, missing_val_mode = 0;
-  h5zsperr_unpack_data_type(cd_values[0], &rank, &is_float, &missing_val_mode);
+  h5zsperr_unpack_extra_info(cd_values[0], &rank, &is_float, &missing_val_mode);
   assert(rank == 2 || rank == 3);
   assert(is_float == 0 || is_float == 1);
   assert(missing_val_mode >= 0 && missing_val_mode <= 4);

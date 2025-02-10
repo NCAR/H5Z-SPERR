@@ -4,7 +4,7 @@
 
 #include <H5PLextern.h>
 
-unsigned int h5zsperr_pack_data_type(int rank, int is_float, int missing_val_mode)
+unsigned int h5zsperr_pack_extra_info(int rank, int is_float, int missing_val_mode)
 {
   assert(rank == 3 || rank == 2);
   assert(is_float == 1 || is_float == 0);
@@ -30,10 +30,10 @@ unsigned int h5zsperr_pack_data_type(int rank, int is_float, int missing_val_mod
   return ret;
 }
 
-void h5zsperr_unpack_data_type(unsigned int meta,
-                               int* rank,
-                               int* is_float,
-                               int* missing_val_mode)
+void h5zsperr_unpack_extra_info(unsigned int meta,
+                                int* rank,
+                                int* is_float,
+                                int* missing_val_mode)
 {
   /* Extract rank from bit positions 0-3. */
   unsigned pos0 = meta & 1u;

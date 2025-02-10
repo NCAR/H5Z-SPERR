@@ -14,10 +14,10 @@
  * Pack and unpack additional information about the input data into an integer.
  * It returns the encoded unsigned int, which shouldn't be zero.
  * The packing function is called by `set_local()` to prepare information
- * for `H5Z_filter_sperr()`, which calls the unpack function.
+ * for `H5Z_filter_sperr()`, which calls the unpack function to extract such info.
  */
-unsigned int h5zsperr_pack_data_type(int rank, int is_float, int missing_val_mode);
-void h5zsperr_unpack_data_type(unsigned int meta, int* rank, int* is_float, int* missing_val_mode);
+unsigned int h5zsperr_pack_extra_info(int rank, int is_float, int missing_val_mode);
+void h5zsperr_unpack_extra_info(unsigned int meta, int* rank, int* is_float, int* missing_val_mode);
 
 /*
  * Check if an input array really has missing values.
