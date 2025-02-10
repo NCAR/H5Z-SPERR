@@ -9,6 +9,7 @@
 
 #define LARGE_MAGNITUDE_F 1e35f
 #define LARGE_MAGNITUDE_D 1e35
+#define H5ZSPERR_MAGIC_NUM 0
 
 #ifdef __cplusplus
 namespace C_API {
@@ -21,8 +22,12 @@ extern "C" {
  * The packing function is called by `set_local()` to prepare information
  * for `H5Z_filter_sperr()`, which calls the unpack function to extract such info.
  */
-unsigned int h5zsperr_pack_extra_info(int rank, int is_float, int missing_val_mode);
-void h5zsperr_unpack_extra_info(unsigned int meta, int* rank, int* is_float, int* missing_val_mode);
+unsigned int h5zsperr_pack_extra_info(int rank, int is_float, int missing_val_mode, int magic_num);
+void h5zsperr_unpack_extra_info(unsigned int meta,
+                                int* rank,
+                                int* is_float,
+                                int* missing_val_mode,
+                                int* magic_num);
 
 /*
  * Check if an input array really has missing values.

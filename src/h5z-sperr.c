@@ -143,7 +143,8 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
   int missing_val_mode = 0;
   float missing_val_f = 0.0f;
   double missing_val_d = 0.0;
-  if (user_cd_nelem == 1) {}  /* not providing missing value mode */
+  if (user_cd_nelem == 1) {
+  } /* not providing missing value mode */
   else if (user_cd_nelem == 2) {
     missing_val_mode = user_cd_values[1];
     if (missing_val_mode > 2) {
@@ -206,14 +207,15 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
 
   /*
    * Assemble the meta info to be stored.
-   * [0]  : 2D/3D, float/double, missing_val specifics
+   * [0]  : 2D/3D, float/double, missing_val_mode, magic_number
    * [1]  : compression specifics (user input)
    * [2-3]: (dimx, dimy) in 2D cases.
    * [2-4]: (dimx, dimy, dimz) in 3D cases.
    * Followed by 0, 1, or 2 integers storing the exact missing value.
    */
   unsigned int cd_values[7] = {0, 0, 0, 0, 0, 0, 0};
-  cd_values[0] = h5zsperr_pack_extra_info(real_dims, is_float, missing_val_mode);
+  cd_values[0] =
+      h5zsperr_pack_extra_info(real_dims, is_float, missing_val_mode, H5ZSPERR_MAGIC_NUM);
   cd_values[1] = user_cd_values[0];
   int i1 = 2, i2 = 0;
   while (i2 < 4) {
@@ -224,11 +226,11 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
 
   /* figure out the length of cd_values[] */
   size_t cd_nelems = real_dims == 2 ? 4 : 5;
-  if (missing_val_mode == 3) {  /* a specific float */
+  if (missing_val_mode == 3) { /* a specific float */
     cd_nelems += 1;
     memcpy(&cd_values[i1], &missing_val_f, sizeof(missing_val_f));
   }
-  else if (missing_val_mode == 4) {  /* a specific double */
+  else if (missing_val_mode == 4) { /* a specific double */
     cd_nelems += 2;
     memcpy(&cd_values[i1], &missing_val_d, sizeof(missing_val_d));
   }
@@ -246,8 +248,8 @@ static size_t H5Z_filter_sperr(unsigned int flags,
                                void** buf)
 {
   /* Extract info from cd_values[] */
-  int rank = 0, is_float = 0, missing_val_mode = 0;
-  h5zsperr_unpack_extra_info(cd_values[0], &rank, &is_float, &missing_val_mode);
+  int rank = 0, is_float = 0, missing_val_mode = 0, magic = 0;
+  h5zsperr_unpack_extra_info(cd_values[0], &rank, &is_float, &missing_val_mode, &magic);
   assert(rank == 2 || rank == 3);
   assert(is_float == 0 || is_float == 1);
   assert(missing_val_mode >= 0 && missing_val_mode <= 4);
@@ -255,8 +257,16 @@ static size_t H5Z_filter_sperr(unsigned int flags,
     assert(cd_nelmts == (rank == 2 ? 4 : 5));
   else if (missing_val_mode == 3)
     assert(cd_nelmts == (rank == 2 ? 5 : 6));
-  else  /* missing_val_mode == 4 */
+  else /* missing_val_mode == 4 */
     assert(cd_nelmts == (rank == 2 ? 6 : 7));
+
+#ifndef NDEBUG
+  if (magic != H5ZSPERR_MAGIC_NUM) {
+    printf("Magic number used for encoding (%d) differs from the decoder (%d). ", magic,
+           H5ZSPERR_MAGIC_NUM);
+    printf("Exame data corruption carefully.\n");
+  }
+#endif
 
   int comp_mode = 0, swap = 0;
   double quality = 0.0;
