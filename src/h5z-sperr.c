@@ -332,11 +332,51 @@ static size_t H5Z_filter_sperr(unsigned int flags,
   } /* Finish Decompression */
   else { /* Compression */
 
-    /* Sanity check on the data size. */
-    if ((is_float ? 4ul : 8ul) * dims[0] * dims[1] * dims[2] != nbytes) {
+    /* Sanity check on the data size */
+    const unsigned int nelem = dims[0] * dims[1] * dims[2];
+    if ((is_float ? 4ul : 8ul) * nelem != nbytes) {
       H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADSIZE,
               "Compression: input buffer len isn't right.");
       return 0;
+    }
+
+    /* First, figure out if there really exists missing values as specified. */
+    int real_missing_mode = 0;
+    switch (missing_val_mode) {
+      case 1:
+        if (h5zsperr_has_nan(*buf, nelem, is_float))
+          real_missing_mode = missing_val_mode;
+        break;
+      case 2:
+        if (h5zsperr_has_large_mag(*buf, nelem, is_float))
+          real_missing_mode = missing_val_mode;
+        break;
+      case 3:
+        if (h5zsperr_has_specific_f32(*buf, nelem, missing_val_f))
+          real_missing_mode = missing_val_mode;
+        break;
+      case 4:
+        if (h5zsperr_has_specific_f64(*buf, nelem, missing_val_d))
+          real_missing_mode = missing_val_mode;
+        break;
+      default:
+        ;
+    }
+
+    /* Second, treat the input buffer if there are indeed missing values. */
+    void* mask = NULL;
+    size_t mask_bytes = 0;
+    switch (real_missing_mode) {
+      case 1:
+        break;  
+      case 2:
+        break;  
+      case 3:
+        break;  
+      case 4:
+        break;  
+      default:
+        ;
     }
 
     void* dst = NULL; /* buffer to hold the compressed bitstream */
