@@ -21,6 +21,10 @@
 #include <stdio.h>
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct {
   uint64_t* begin;  /* begin of the stream */
   uint64_t* ptr;    /* pointer to the next word to be read/written */
@@ -55,5 +59,9 @@ size_t icecream_wtell(icecream* s);
 
 /* Write any remaining buffered bits and align stream on next word boundary. */
 void icecream_flush(icecream* s);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

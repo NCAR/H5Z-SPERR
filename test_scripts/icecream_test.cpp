@@ -4,9 +4,7 @@
 #include <random>
 #include <cstring> // std::memcpy()
 
-extern "C" {
 #include "icecream.h"
-}
 
 namespace {
 

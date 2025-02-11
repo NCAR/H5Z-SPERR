@@ -1,8 +1,6 @@
 #include "gtest/gtest.h"
 
-extern "C" {
 #include "h5zsperr_helper.h"
-}
 
 namespace {
 

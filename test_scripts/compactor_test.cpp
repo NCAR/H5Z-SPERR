@@ -3,9 +3,7 @@
 #include <limits>
 #include <memory>
 
-extern "C" {
 #include "compactor.h"
-}
 
 namespace {
 

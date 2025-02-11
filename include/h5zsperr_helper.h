@@ -36,10 +36,12 @@ int h5zsperr_has_nan(const void* buf, size_t nelem, int is_float);
 int h5zsperr_has_large_mag(const void* buf, size_t nelem, int is_float);
 
 /*
- * Missing value modes not yet implemented.
- * int h5zsperr_has_specific_f32(const void* buf, size_t nelem, float val);
- * int h5zsperr_has_specific_f64(const void* buf, size_t nelem, double val);
+ * Produce a compact bitmask.
+ * `mask_buf` is already allocated with length `mask_bytes`.
+ * Returns 0 upon success.
  */
+int h5zsperr_make_mask_nan(const void* data_buf, size_t nelem, int is_float,
+                           void* mask_buf, size_t mask_bytes, size_t* useful_bytes);
 
 #ifdef __cplusplus
 } /* end of extern "C" */

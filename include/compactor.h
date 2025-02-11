@@ -24,8 +24,9 @@
 #include <stdint.h>
 #include <assert.h>
 
-/* Change this typedef to use a different width. */
-typedef uint32_t INT;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Return the compaction strategy to use:
  * 0: compact with all 0's being the most frequent
@@ -58,5 +59,9 @@ size_t compactor_encode(const void* bitmask,
 size_t compactor_decode(const void* compact_bitstream,
                         size_t compact_bitstream_bytes,
                         void* decoded_bitmask);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

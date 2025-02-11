@@ -7,6 +7,9 @@
 #include <stdio.h>
 #endif
 
+/* Change this typedef to use a different width. */
+typedef uint32_t INT;
+
 int compactor_strategy(const void* buf, size_t bytes)
 {
   assert(bytes % 8 == 0);

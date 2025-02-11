@@ -1,9 +1,13 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>  // isnan()
+#include <memory>
 
 #include <H5PLextern.h>
 #include "h5zsperr_helper.h"
+
+#include "compactor.h"
+#include "icecream.h"
 
 unsigned int C_API::h5zsperr_pack_extra_info(int rank, int is_float, int missing_val_mode, int magic)
 {
@@ -95,14 +99,40 @@ int C_API::h5zsperr_has_large_mag(const void* buf, size_t nelem, int is_float)
   }
 }
 
-// int C_API::h5zsperr_has_specific_f32(const void* buf, size_t nelem, float f32)
-// {
-//   const float* p = (const float*)buf;
-//   return std::any_of(p, p + nelem, [f32](auto v) { return v == f32; });
-// }
+int C_API::h5zsperr_make_mask_nan(const void* data_buf, size_t nelem, int is_float,
+                                  void* mask_buf, size_t mask_bytes, size_t* useful_bytes)
+{
+  assert(is_float == 0 || is_float == 1);
 
-// int C_API::h5zsperr_has_specific_f64(const void* buf, size_t nelem, double f64)
-// {
-//   const double* p = (const double*)buf;
-//   return std::any_of(p, p + nelem, [f64](auto v) { return v == f64; });
-// }
+  // First, make a naive mask.
+  //
+  auto nbytes = (nelem + 7) / 8;
+  while (nbytes % 8)
+    nbytes++;
+  auto mem = std::make_unique<char[]>(nbytes);
+  auto s1 = icecream();
+  icecream_use_mem(&s1, mem.get(), nbytes);
+
+  if (is_float) {
+    const float* p = (const float*)data_buf;
+    for (size_t i = 0; i < nelem; i++)
+      icecream_wbit(&s1, std::isnan(p[i]));
+  }
+  else {
+    const double* p = (const double*)data_buf;
+    for (size_t i = 0; i < nelem; i++)
+      icecream_wbit(&s1, std::isnan(p[i]));
+  }
+  icecream_flush(&s1);
+
+  // Second, compact this naive mask.
+  //
+  while (mask_bytes % 8)
+    mask_bytes--;
+  if (mask_bytes < compactor_comp_size(mem.get(), nbytes))
+    return 1; // Not enough space!
+
+  *useful_bytes = compactor_encode(mem.get(), nbytes, mask_buf, mask_bytes);
+
+  return 0;
+}
