@@ -34,8 +34,12 @@ void h5zsperr_unpack_extra_info(unsigned int meta,
  */
 int h5zsperr_has_nan(const void* buf, size_t nelem, int is_float);
 int h5zsperr_has_large_mag(const void* buf, size_t nelem, int is_float);
-int h5zsperr_has_specific_f32(const void* buf, size_t nelem, float val);
-int h5zsperr_has_specific_f64(const void* buf, size_t nelem, double val);
+
+/*
+ * Missing value modes not yet implemented.
+ * int h5zsperr_has_specific_f32(const void* buf, size_t nelem, float val);
+ * int h5zsperr_has_specific_f64(const void* buf, size_t nelem, double val);
+ */
 
 #ifdef __cplusplus
 } /* end of extern "C" */

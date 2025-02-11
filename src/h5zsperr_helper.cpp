@@ -9,7 +9,7 @@ unsigned int C_API::h5zsperr_pack_extra_info(int rank, int is_float, int missing
 {
   assert(rank == 3 || rank == 2);
   assert(is_float == 1 || is_float == 0);
-  assert(missing_val_mode >= 0 && missing_val_mode <= 4);
+  assert(missing_val_mode >= 0 && missing_val_mode <= 2);
   assert(magic >= 0 && magic <= 63);
 
   unsigned int ret = 0;
@@ -95,14 +95,14 @@ int C_API::h5zsperr_has_large_mag(const void* buf, size_t nelem, int is_float)
   }
 }
 
-int C_API::h5zsperr_has_specific_f32(const void* buf, size_t nelem, float f32)
-{
-  const float* p = (const float*)buf;
-  return std::any_of(p, p + nelem, [f32](auto v) { return v == f32; });
-}
+// int C_API::h5zsperr_has_specific_f32(const void* buf, size_t nelem, float f32)
+// {
+//   const float* p = (const float*)buf;
+//   return std::any_of(p, p + nelem, [f32](auto v) { return v == f32; });
+// }
 
-int C_API::h5zsperr_has_specific_f64(const void* buf, size_t nelem, double f64)
-{
-  const double* p = (const double*)buf;
-  return std::any_of(p, p + nelem, [f64](auto v) { return v == f64; });
-}
+// int C_API::h5zsperr_has_specific_f64(const void* buf, size_t nelem, double f64)
+// {
+//   const double* p = (const double*)buf;
+//   return std::any_of(p, p + nelem, [f64](auto v) { return v == f64; });
+// }

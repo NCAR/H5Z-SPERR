@@ -122,6 +122,7 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
    * -- One integer (mandatory): compression mode, quality, rank swap
    * -- One integer (optional) : missing value mode
    * -- One/two integers (optional): a float or double specifying the missing value
+   *    (not implemented)
    */
   size_t user_cd_nelem = 4; /* the maximum possible number */
   unsigned int user_cd_values[4] = {0, 0, 0, 0};
@@ -137,12 +138,10 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
    * 0: no missing value
    * 1: any NAN is a missing value
    * 2: any value where abs(value) >= 1e35 is a missing value.
-   * 3: use a single 32-bit float as the missing value.
-   * 4: use a single 64-bit double as the missing value.
+   * 3: use a single 32-bit float as the missing value. (not implemented)
+   * 4: use a single 64-bit double as the missing value. (not implemented)
    */
   int missing_val_mode = 0;
-  float missing_val_f = 0.0f;
-  double missing_val_d = 0.0;
   if (user_cd_nelem == 1) {
   } /* not providing missing value mode */
   else if (user_cd_nelem == 2) {
@@ -156,6 +155,9 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
       return -1;
     }
   }
+
+/* Mode 3 and 4 are not implemented. */
+#if 0
   else if (user_cd_nelem == 3) {
     missing_val_mode = user_cd_values[1];
     if (missing_val_mode != 3) {
@@ -180,6 +182,8 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
     }
     memcpy(&missing_val_d, &user_cd_values[2], sizeof(missing_val_d));
   }
+#endif
+
   else {
 #ifndef NDEBUG
     printf("%s: %d, user_cd_nelem = %lu\n", __FILE__, __LINE__, user_cd_nelem);
@@ -211,7 +215,7 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
    * [1]  : compression specifics (user input)
    * [2-3]: (dimx, dimy) in 2D cases.
    * [2-4]: (dimx, dimy, dimz) in 3D cases.
-   * Followed by 0, 1, or 2 integers storing the exact missing value.
+   * Followed by 0, 1, or 2 integers storing the exact missing value. (not implemented)
    */
   unsigned int cd_values[7] = {0, 0, 0, 0, 0, 0, 0};
   cd_values[0] =
@@ -225,7 +229,10 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
   }
 
   /* figure out the length of cd_values[] */
-  size_t cd_nelems = real_dims == 2 ? 4 : 5;
+  size_t cd_nelems = (real_dims == 2) ? 4 : 5;
+
+  /* Mode 3 and 4 are not implemented. */
+#if 0
   if (missing_val_mode == 3) { /* a specific float */
     cd_nelems += 1;
     memcpy(&cd_values[i1], &missing_val_f, sizeof(missing_val_f));
@@ -234,6 +241,7 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
     cd_nelems += 2;
     memcpy(&cd_values[i1], &missing_val_d, sizeof(missing_val_d));
   }
+#endif
 
   H5Pmodify_filter(dcpl_id, H5Z_FILTER_SPERR, H5Z_FLAG_MANDATORY, cd_nelems, cd_values);
 
@@ -252,13 +260,8 @@ static size_t H5Z_filter_sperr(unsigned int flags,
   h5zsperr_unpack_extra_info(cd_values[0], &rank, &is_float, &missing_val_mode, &magic);
   assert(rank == 2 || rank == 3);
   assert(is_float == 0 || is_float == 1);
-  assert(missing_val_mode >= 0 && missing_val_mode <= 4);
-  if (missing_val_mode <= 2)
-    assert(cd_nelmts == (rank == 2 ? 4 : 5));
-  else if (missing_val_mode == 3)
-    assert(cd_nelmts == (rank == 2 ? 5 : 6));
-  else /* missing_val_mode == 4 */
-    assert(cd_nelmts == (rank == 2 ? 6 : 7));
+  assert(missing_val_mode >= 0 && missing_val_mode <= 2);
+  assert(cd_nelmts == (rank == 2 ? 4 : 5));
 
 #ifndef NDEBUG
   if (magic != H5ZSPERR_MAGIC_NUM) {
@@ -287,13 +290,6 @@ static size_t H5Z_filter_sperr(unsigned int flags,
   int cd_val_offset = 4;
   if (rank == 3)
     cd_val_offset = 5;
-
-  float missing_val_f = 0.f;
-  double missing_val_d = 0.0;
-  if (missing_val_mode == 3)
-    memcpy(&missing_val_f, &cd_values[cd_val_offset], sizeof(missing_val_f));
-  else if (missing_val_mode == 4)
-    memcpy(&missing_val_d, &cd_values[cd_val_offset], sizeof(missing_val_d));
 
   /* Decompression */
   if (flags & H5Z_FLAG_REVERSE) {
@@ -342,42 +338,14 @@ static size_t H5Z_filter_sperr(unsigned int flags,
 
     /* First, figure out if there really exists missing values as specified. */
     int real_missing_mode = 0;
-    switch (missing_val_mode) {
-      case 1:
-        if (h5zsperr_has_nan(*buf, nelem, is_float))
-          real_missing_mode = missing_val_mode;
-        break;
-      case 2:
-        if (h5zsperr_has_large_mag(*buf, nelem, is_float))
-          real_missing_mode = missing_val_mode;
-        break;
-      case 3:
-        if (h5zsperr_has_specific_f32(*buf, nelem, missing_val_f))
-          real_missing_mode = missing_val_mode;
-        break;
-      case 4:
-        if (h5zsperr_has_specific_f64(*buf, nelem, missing_val_d))
-          real_missing_mode = missing_val_mode;
-        break;
-      default:
-        ;
-    }
+    if (missing_val_mode == 1 && h5zsperr_has_nan(*buf, nelem, is_float))
+      real_missing_mode = 1;
+    else if (missing_val_mode == 2 && h5zsperr_has_large_mag(*buf, nelem, is_float))
+      real_missing_mode = 2;
 
     /* Second, treat the input buffer if there are indeed missing values. */
     void* mask = NULL;
     size_t mask_bytes = 0;
-    switch (real_missing_mode) {
-      case 1:
-        break;  
-      case 2:
-        break;  
-      case 3:
-        break;  
-      case 4:
-        break;  
-      default:
-        ;
-    }
 
     void* dst = NULL; /* buffer to hold the compressed bitstream */
     size_t dst_len = 0;
