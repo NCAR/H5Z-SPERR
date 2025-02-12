@@ -109,7 +109,7 @@ int C_API::h5zsperr_make_mask_nan(const void* data_buf, size_t nelem, int is_flo
   auto nbytes = (nelem + 7) / 8;
   while (nbytes % 8)
     nbytes++;
-  auto mem = std::make_unique<char[]>(nbytes);
+  auto mem = std::make_unique<uint8_t[]>(nbytes);
   auto s1 = icecream();
   icecream_use_mem(&s1, mem.get(), nbytes);
 
@@ -135,4 +135,109 @@ int C_API::h5zsperr_make_mask_nan(const void* data_buf, size_t nelem, int is_flo
   *useful_bytes = compactor_encode(mem.get(), nbytes, mask_buf, mask_bytes);
 
   return 0;
+}
+
+int C_API::h5zsperr_make_mask_large_mag(const void* data_buf, size_t nelem, int is_float,
+                                        void* mask_buf, size_t mask_bytes, size_t* useful_bytes)
+{
+  assert(is_float == 0 || is_float == 1);
+
+  // First, make a naive mask.
+  //
+  auto nbytes = (nelem + 7) / 8;
+  while (nbytes % 8)
+    nbytes++;
+  auto mem = std::make_unique<uint8_t[]>(nbytes);
+  auto s1 = icecream();
+  icecream_use_mem(&s1, mem.get(), nbytes);
+
+  if (is_float) {
+    const float* p = (const float*)data_buf;
+    for (size_t i = 0; i < nelem; i++)
+      icecream_wbit(&s1, std::abs(p[i]) >= LARGE_MAGNITUDE_F);
+  }
+  else {
+    const double* p = (const double*)data_buf;
+    for (size_t i = 0; i < nelem; i++)
+      icecream_wbit(&s1, std::abs(p[i]) >= LARGE_MAGNITUDE_D);
+  }
+  icecream_flush(&s1);
+
+  // Second, compact this naive mask.
+  //
+  while (mask_bytes % 8)
+    mask_bytes--;
+  if (mask_bytes < compactor_comp_size(mem.get(), nbytes))
+    return 1; // Not enough space!
+
+  *useful_bytes = compactor_encode(mem.get(), nbytes, mask_buf, mask_bytes);
+
+  return 0;
+}
+
+template<typename T>
+void treat_nan_impl(T* buf, size_t nelem)
+{
+  // First, find the mean value.
+  const size_t BLOCK = 4096;
+  T total_sum = 0.0, block_sum = 0.0;
+  size_t total_cnt = 0, block_cnt = 0;
+  for (size_t i = 0; i < nelem; i++) {
+    if (!std::isnan(buf[i])) {
+      block_sum += buf[i];
+      total_cnt++;
+      if (block_cnt++ == BLOCK) {
+        total_sum += block_sum;
+        block_sum = 0.0;
+        block_cnt = 0;
+      }
+    }
+  }
+  T mean = (total_sum + block_sum) / (T)total_cnt;
+
+  // Second, replace every occurance of NaN
+  std::replace_if(buf, buf + nelem, [](auto v) { return std::isnan(v); }, mean);
+}
+void C_API::h5zsperr_treat_nan_f32(float* data_buf, size_t nelem)
+{
+  treat_nan_impl(data_buf, nelem);
+}
+void C_API::h5zsperr_treat_nan_f64(double* data_buf, size_t nelem)
+{
+  treat_nan_impl(data_buf, nelem);
+}
+
+template<typename T>
+T treat_large_mag_impl(T* buf, size_t nelem)
+{
+  // First, find the mean value.
+  constexpr T MAG = sizeof(T) == 4 ? LARGE_MAGNITUDE_F : LARGE_MAGNITUDE_D;
+  const size_t BLOCK = 4096;
+  T total_sum = 0.0, block_sum = 0.0;
+  size_t total_cnt = 0, block_cnt = 0;
+  for (size_t i = 0; i < nelem; i++) {
+    if (std::abs(buf[i]) < MAG) {
+      block_sum += buf[i];
+      total_cnt++;
+      if (block_cnt++ == BLOCK) {
+        total_sum += block_sum;
+        block_sum = 0.0;
+        block_cnt = 0;
+      }
+    }
+  }
+  T mean = (total_sum + block_sum) / (T)total_cnt;
+
+  // Second, replace every occurance of large magnitude
+  std::replace_if(buf, buf + nelem, [MAG](auto v) { return std::abs(v) >= MAG; }, mean);
+
+  return mean;
+}
+float C_API::h5zsperr_treat_large_mag_f32(float* data_buf, size_t nelem)
+{
+  return treat_large_mag_impl(data_buf, nelem);
+}
+double C_API::h5zsperr_treat_large_mag_f64(double* data_buf, size_t nelem)
+{
+  return treat_large_mag_impl(data_buf, nelem);
 }
