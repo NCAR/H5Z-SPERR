@@ -329,55 +329,118 @@ static size_t H5Z_filter_sperr(unsigned int flags,
   else { /* Compression */
 
     /* Sanity check on the data size */
-    const unsigned int nelem = dims[0] * dims[1] * dims[2];
+    const size_t nelem = (size_t)dims[0] * dims[1] * dims[2];
     if ((is_float ? 4ul : 8ul) * nelem != nbytes) {
       H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADSIZE,
               "Compression: input buffer len isn't right.");
       return 0;
     }
 
-    /* First, figure out if there really exists missing values as specified. */
+    /* Step 1: figure out if there really exists missing values as specified. */
     int real_missing_mode = 0;
     if (missing_val_mode == 1 && h5zsperr_has_nan(*buf, nelem, is_float))
       real_missing_mode = 1;
     else if (missing_val_mode == 2 && h5zsperr_has_large_mag(*buf, nelem, is_float))
       real_missing_mode = 2;
 
-    /* Second, treat the input buffer if there are indeed missing values. */
+    /* Step 2: save a compact bitmask indicating the missing value locations. */
+    size_t mask_bytes = 0, mask_useful_bytes = 0;
     void* mask = NULL;
-    size_t mask_bytes = 0;
+    if (real_missing_mode == 1 || real_missing_mode == 2) {
+      mask_bytes = nelem / 8 + 1;
+      mask = malloc(mask_bytes);
+      int ret = 0;
+      if (real_missing_mode == 1) {
+        ret = h5zsperr_make_mask_nan(*buf, nelem, is_float, mask, mask_bytes, &mask_useful_bytes);
+      }
+      else if (real_missing_mode == 2) {
+        ret = h5zsperr_make_mask_large_mag(*buf, nelem, is_float, 
+                                           mask, mask_bytes, &mask_useful_bytes);
+      }
 
-    void* dst = NULL; /* buffer to hold the compressed bitstream */
-    size_t dst_len = 0;
+      if (ret) {
+        free(mask);
+        H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADVALUE,
+                "SPERR compacting bitmask failed.");
+      }
+    }
+
+    /* Step 3: treat the input buffer with missing values replaced. */
+    float replace_f = 0.f;
+    double replace_d = 0.0;
+    if (real_missing_mode == 1) {
+      if (is_float)
+        replace_f = h5zsperr_treat_nan_f32(*buf, nelem);
+      else
+        replace_d = h5zsperr_treat_nan_f64(*buf, nelem);
+    }
+    else if (real_missing_mode == 2) {
+      if (is_float)
+        replace_f = h5zsperr_treat_large_mag_f32(*buf, nelem);
+      else
+        replace_d = h5zsperr_treat_large_mag_f64(*buf, nelem);
+    }
+
+    /* Step 4: SPERR compression! */
+    void* sperr = NULL; /* buffer to hold the compressed bitstream */
+    size_t sperr_len = 0;
     int ret = 0;
 
-    if (rank == 2)
-      ret = sperr_comp_2d(*buf, is_float, dims[0], dims[1], comp_mode, quality, 0, &dst, &dst_len);
-    else
+    if (rank == 2) {
+      ret = sperr_comp_2d(*buf, is_float, dims[0], dims[1], comp_mode, quality, 0,
+                          &sperr, &sperr_len);
+    }
+    else {
       ret = sperr_comp_3d(*buf, is_float, dims[0], dims[1], dims[2], dims[0], dims[1], dims[2],
-                          comp_mode, quality, 1, &dst, &dst_len);
+                          comp_mode, quality, 1, &sperr, &sperr_len);
+    }
     if (ret != 0) {
-      if (dst) {
-        free(dst); /* allocated by SPERR, using malloc() */
-        dst = NULL;
-      }
+      if (sperr) free(sperr); /* allocated by SPERR using malloc() */
+      if (mask) free(mask);
       H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADVALUE,
               "SPERR compression failed.");
       return 0;
     }
 
-    if (dst_len <= *buf_size) { /* Re-use the input buffer */
-      memcpy(*buf, dst, dst_len);
-      free(dst); /* allocated by SPERR, using malloc() */
-      dst = NULL;
+    /* Step 5: assemble the final output.
+     *
+     * The assembled output has the following format:
+     * -- 1 byte indicating the missing value mode.
+     * -- In missing value mode 2, followed by 4 or 8 bytes of the large-mag value being replaced.
+     *    In missing value mode 0 or 1, nothing.
+     * -- In missing value mode 1 or 2, followed by a compact bitmask.
+     * -- The regular SPERR bitstream.
+     */
+    size_t out_len = sperr_len + 1;
+    if (real_missing_mode == 2)
+      out_len += is_float ? 4 : 8;
+    if (real_missing_mode == 1 || real_missing_mode == 2)
+      out_len += mask_useful_bytes;
+
+    if (out_len <= *buf_size) { /* Re-use the input buffer */
+      uint8_t* p = (uint8_t*)(*buf);
+      p[0] = (uint8_t)real_missing_mode;
+      size_t offset = 1;
+      if (real_missing_mode == 2) {
+        if (is_float)
+          memcpy(p + offset, &replace_f, sizeof(replace_f));
+        else
+          memcpy(p + offset, &replace_d, sizeof(replace_d));
+        offset += is_float ? 4 : 8;
+      }
+
+
+      memcpy(*buf, sperr, sperr_len);
+      free(sperr); /* allocated by SPERR, using malloc() */
+      sperr = NULL;
     }
     else {                 /* Point to the new buffer */
       H5free_memory(*buf); /* allocated by HDF5 */
-      *buf = dst;
-      *buf_size = dst_len;
+      *buf = sperr;
+      *buf_size = sperr_len;
     }
 
-    return dst_len;
+    return sperr_len;
 
   } /* Finish compression */
 }
