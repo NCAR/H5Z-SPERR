@@ -47,10 +47,9 @@ int h5zsperr_make_mask_large_mag(const void* data_buf, size_t nelem, int is_floa
 
 /*
  * Replace every missing value in the `data_buf` with the mean of the field.
- * It returns the mean in some versions.
  */
-void h5zsperr_treat_nan_f32(float* data_buf, size_t nelem);
-void h5zsperr_treat_nan_f64(double* data_buf, size_t nelem);
+float h5zsperr_treat_nan_f32(float* data_buf, size_t nelem);
+double h5zsperr_treat_nan_f64(double* data_buf, size_t nelem);
 float h5zsperr_treat_large_mag_f32(float* data_buf, size_t nelem);
 double h5zsperr_treat_large_mag_f64(double* data_buf, size_t nelem);
 

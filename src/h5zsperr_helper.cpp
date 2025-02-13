@@ -176,7 +176,7 @@ int C_API::h5zsperr_make_mask_large_mag(const void* data_buf, size_t nelem, int 
 }
 
 template<typename T>
-void treat_nan_impl(T* buf, size_t nelem)
+T treat_nan_impl(T* buf, size_t nelem)
 {
   // First, find the mean value.
   const size_t BLOCK = 4096;
@@ -197,14 +197,16 @@ void treat_nan_impl(T* buf, size_t nelem)
 
   // Second, replace every occurance of NaN
   std::replace_if(buf, buf + nelem, [](auto v) { return std::isnan(v); }, mean);
+
+  return mean;
 }
-void C_API::h5zsperr_treat_nan_f32(float* data_buf, size_t nelem)
+float C_API::h5zsperr_treat_nan_f32(float* data_buf, size_t nelem)
 {
-  treat_nan_impl(data_buf, nelem);
+  return treat_nan_impl(data_buf, nelem);
 }
-void C_API::h5zsperr_treat_nan_f64(double* data_buf, size_t nelem)
+double C_API::h5zsperr_treat_nan_f64(double* data_buf, size_t nelem)
 {
-  treat_nan_impl(data_buf, nelem);
+  return treat_nan_impl(data_buf, nelem);
 }
 
 template<typename T>
@@ -228,10 +230,13 @@ T treat_large_mag_impl(T* buf, size_t nelem)
   }
   T mean = (total_sum + block_sum) / (T)total_cnt;
 
-  // Second, replace every occurance of large magnitude
+  // Second, find the first large magnitude value.
+  auto orig = *(std::find_if(buf, buf + nelem, [MAG](auto v) { return std::abs(v) >= MAG; }));
+
+  // Third, replace every occurance of large magnitude
   std::replace_if(buf, buf + nelem, [MAG](auto v) { return std::abs(v) >= MAG; }, mean);
 
-  return mean;
+  return orig;
 }
 float C_API::h5zsperr_treat_large_mag_f32(float* data_buf, size_t nelem)
 {

@@ -121,8 +121,9 @@ TEST(h5zsperr_helper, treat_nan)
   buf2[10] = std::nanf("1");
   buf2[20] = std::nanf("1");
   buf2[90] = std::nanf("1");
-  C_API::h5zsperr_treat_nan_f32(buf2.data(), N);
+  auto mean2 = C_API::h5zsperr_treat_nan_f32(buf2.data(), N);
 
+  ASSERT_FLOAT_EQ(mean, mean2);
   for (size_t i = 0; i < N; i++)
     ASSERT_FLOAT_EQ(buf[i], buf2[i]) << "i = " << i;
 }
@@ -145,9 +146,9 @@ TEST(h5zsperr_helper, treat_large_mag)
   buf2[10] = LARGE_MAGNITUDE_D;
   buf2[20] = LARGE_MAGNITUDE_D;
   buf2[90] = LARGE_MAGNITUDE_D;
-  auto mean2 = C_API::h5zsperr_treat_large_mag_f64(buf2.data(), N);
+  auto tmp = C_API::h5zsperr_treat_large_mag_f64(buf2.data(), N);
+  ASSERT_EQ(tmp, LARGE_MAGNITUDE_D);
 
-  ASSERT_DOUBLE_EQ(mean, mean2);
   for (size_t i = 0; i < N; i++)
     ASSERT_DOUBLE_EQ(buf[i], buf2[i]) << "i = " << i;
 }
