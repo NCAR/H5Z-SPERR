@@ -64,6 +64,14 @@ size_t compactor_comp_size(const void* buf, size_t bytes)
   return nbytes;
 }
 
+size_t compactor_useful_bytes(const void* comp_buf)
+{
+  uint32_t nbits = 0;
+  memcpy(&nbits, comp_buf, sizeof(nbits));
+
+  return (nbits + 7) / 8;
+}
+
 size_t compactor_encode(const void* bitmask,
                         size_t bitmask_bytes,
                         void* compact_bitstream,

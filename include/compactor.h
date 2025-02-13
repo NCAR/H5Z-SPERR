@@ -35,13 +35,16 @@ extern "C" {
  */
 int compactor_strategy(const void* buf, size_t bytes);
 
-/* Return the size in bytes of the compacted bitstream.
- * Note: `bytes` has to be a multiple of 8.
+/* Return the size in bytes of the resulting compacted bitstream, given an input buf.
+ * Note: `buf_bytes` has to be a multiple of 8.
  */
-size_t compactor_comp_size(const void* buf, size_t bytes);
+size_t compactor_comp_size(const void* buf, size_t buf_bytes);
 
-/* Given a bitmask, compact it and return the useful size of the output
- * bitstream, which has the same length as the output of `compactor_comp_size()`.
+/* Return the useful number of bytes in a compacted bitstream. */
+size_t compactor_useful_bytes(const void* comp_buf);
+
+/* Return the useful size of the output bitstream,
+ * which is the same as the output of `compactor_comp_size()`.
  * Note 1: the input bitmask length (in bytes) has to be a multiple of 8.
  *         This requirement is inheritated from the bitstream implementation.
  * Note 2: the output buffer length should be 1) a multiple of 8, and
@@ -52,9 +55,11 @@ size_t compactor_encode(const void* bitmask,
                         void* compact_bitstream,
                         size_t compact_bitstream_bytes);
 
-/* Given a compact bitstream, decode it and return the number of useful bytes
- * in the decoded bitmask.
- * Note: `compact_bitstream_bytes` should be a multiple of 8.
+/* Return the number of useful bytes in the decoded bitmask.
+ * Note: The number of useful bytes might be bigger than the number of bytes being
+ *       encoded, because of the word size that the compactor operates on.
+ * Note: `compact_bitstream_bytes` should be a multiple of 8 that is no less than
+ *       the size returned by `compactor_encode()`.
  */
 size_t compactor_decode(const void* compact_bitstream,
                         size_t compact_bitstream_bytes,
