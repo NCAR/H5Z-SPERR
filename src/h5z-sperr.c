@@ -287,12 +287,14 @@ static size_t H5Z_filter_sperr(unsigned int flags,
     }
   }
 
-  int cd_val_offset = 4;
-  if (rank == 3)
-    cd_val_offset = 5;
+  if (flags & H5Z_FLAG_REVERSE) { /* Decompression */
 
-  /* Decompression */
-  if (flags & H5Z_FLAG_REVERSE) {
+    const uint8_t* p = (uint8_t*)(*buf);
+    int real_missing_mode = p[0];
+
+
+
+
     void* dst = NULL; /* buffer to hold the decompressed data */
     int ret = 0;
     if (rank == 2)
@@ -344,10 +346,10 @@ static size_t H5Z_filter_sperr(unsigned int flags,
       real_missing_mode = 2;
 
     /* Step 2: save a compact bitmask indicating the missing value locations. */
-    size_t mask_bytes = 0, mask_useful_bytes = 0;
+    size_t mask_useful_bytes = 0;
     void* mask = NULL;
-    if (real_missing_mode == 1 || real_missing_mode == 2) {
-      mask_bytes = nelem / 8 + 1;
+    if (real_missing_mode != 0) {
+      size_t mask_bytes = nelem / 8 + 1;
       mask = malloc(mask_bytes);
       int ret = 0;
       if (real_missing_mode == 1) {
@@ -405,42 +407,53 @@ static size_t H5Z_filter_sperr(unsigned int flags,
     /* Step 5: assemble the final output.
      *
      * The assembled output has the following format:
-     * -- 1 byte indicating the missing value mode.
-     * -- In missing value mode 2, followed by 4 or 8 bytes of the large-mag value being replaced.
-     *    In missing value mode 0 or 1, nothing.
-     * -- In missing value mode 1 or 2, followed by a compact bitmask.
+     * -- 1 byte: the missing value mode.
+     * -- 4 or 8 bytes: the large-mag value being replaced, in missing value mode 2.
+     *    0 byte: in missing value mode 0 or 1.
+     * -- A compact bitmask, in missing value mode 1 or 2.
      * -- The regular SPERR bitstream.
      */
     size_t out_len = sperr_len + 1;
     if (real_missing_mode == 2)
       out_len += is_float ? 4 : 8;
-    if (real_missing_mode == 1 || real_missing_mode == 2)
+    if (real_missing_mode != 0)
       out_len += mask_useful_bytes;
 
-    if (out_len <= *buf_size) { /* Re-use the input buffer */
-      uint8_t* p = (uint8_t*)(*buf);
-      p[0] = (uint8_t)real_missing_mode;
-      size_t offset = 1;
-      if (real_missing_mode == 2) {
-        if (is_float)
-          memcpy(p + offset, &replace_f, sizeof(replace_f));
-        else
-          memcpy(p + offset, &replace_d, sizeof(replace_d));
-        offset += is_float ? 4 : 8;
-      }
-
-
-      memcpy(*buf, sperr, sperr_len);
-      free(sperr); /* allocated by SPERR, using malloc() */
-      sperr = NULL;
-    }
-    else {                 /* Point to the new buffer */
-      H5free_memory(*buf); /* allocated by HDF5 */
-      *buf = sperr;
-      *buf_size = sperr_len;
+    if (out_len > *buf_size) { /* Need to allocate a new buffer */
+      H5free_memory(*buf);
+      *buf = H5allocate_memory(out_len, false);
+      *buf_size = out_len;
     }
 
-    return sperr_len;
+    /* copy the missing value mode */
+    uint8_t* p = (uint8_t*)(*buf);
+    p[0] = (uint8_t)real_missing_mode;
+    size_t offset = 1;
+
+    /* copy the missing value to be filled */
+    if (real_missing_mode == 2) {
+      if (is_float)
+        memcpy(p + offset, &replace_f, sizeof(replace_f));
+      else
+        memcpy(p + offset, &replace_d, sizeof(replace_d));
+      offset += is_float ? 4 : 8;
+    }
+
+    /* copy the missing value mask */
+    if (real_missing_mode != 0) {
+      assert(mask);
+      memcpy(p + offset, mask, mask_useful_bytes);
+      offset += mask_useful_bytes;
+      free(mask);
+      mask = NULL;
+    }
+
+    /* copy the SPERR bitstream */
+    memcpy(p + offset, sperr, sperr_len);
+    free(sperr);
+    sperr = NULL;
+
+    return out_len;
 
   } /* Finish compression */
 }
