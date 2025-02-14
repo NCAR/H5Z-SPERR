@@ -40,7 +40,9 @@ int compactor_strategy(const void* buf, size_t bytes);
  */
 size_t compactor_comp_size(const void* buf, size_t buf_bytes);
 
-/* Return the useful number of bytes in a compacted bitstream. */
+/* Return the number of useful bytes in a compacted bitstream.
+ * This value is the same as the output of `compactor_comp_size()` during encoding.
+ */
 size_t compactor_useful_bytes(const void* comp_buf);
 
 /* Return the useful size of the output bitstream,

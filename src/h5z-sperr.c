@@ -18,6 +18,8 @@
 #include <SPERR_C_API.h>
 #include "h5z-sperr.h"
 #include "h5zsperr_helper.h"
+#include "compactor.h"
+#include "icecream.h"
 
 #ifndef NDEBUG
 #include <stdio.h>
@@ -289,34 +291,112 @@ static size_t H5Z_filter_sperr(unsigned int flags,
 
   if (flags & H5Z_FLAG_REVERSE) { /* Decompression */
 
+    const size_t nelem = (size_t)dims[0] * dims[1] * dims[2];
+
     const uint8_t* p = (uint8_t*)(*buf);
     int real_missing_mode = p[0];
+    size_t offset = 1;
 
+    /* Save the fill value. */
+    float fill_val_f = 0.f;
+    double fill_val_d = 0.0;
+    if (real_missing_mode == 2) {
+      if (is_float)
+        memcpy(&fill_val_f, p + offset, sizeof(fill_val_f));
+      else
+        memcpy(&fill_val_d, p + offset, sizeof(fill_val_d));
+      offset += is_float ? 4 : 8;
+    }
 
+    /* Decode the bitmask. */
+    void* mask = NULL; /* naive bitmask */
+    size_t mask_bytes = 0;
+    if (real_missing_mode != 0) {
+      mask_bytes = (nelem + 7) / 8;
+      while (mask_bytes % 8)
+        mask_bytes++;
+      mask = malloc(mask_bytes);
 
+      size_t compact_bytes = compactor_useful_bytes(p + offset);
+      while (compact_bytes % 8)
+        compact_bytes++;
 
+      compactor_decode(p + offset, compact_bytes, mask);
+      offset += compactor_useful_bytes(p + offset);
+    }
+
+    /* Decompress the real data. */
     void* dst = NULL; /* buffer to hold the decompressed data */
+    size_t dst_len = (is_float ? 4ul : 8ul) * nelem;
     int ret = 0;
     if (rank == 2)
-      ret = sperr_decomp_2d(*buf, nbytes, is_float, dims[0], dims[1], &dst);
+      ret = sperr_decomp_2d(p + offset, nbytes - offset, is_float, dims[0], dims[1], &dst);
     else {
       size_t dimx = 0, dimy = 0, dimz = 0;
-      ret = sperr_decomp_3d(*buf, nbytes, is_float, 1, &dimx, &dimy, &dimz, &dst);
+      ret = sperr_decomp_3d(p + offset, nbytes - offset, is_float, 1, &dimx, &dimy, &dimz, &dst);
+      assert(dimx == dims[0]);
+      assert(dimy == dims[1]);
+      assert(dimz == dims[2]);
     }
     if (ret != 0) {
       if (dst) {
-        free(dst); /* allocated by SPERR, using malloc() */
+        free(dst);
         dst = NULL;
+      }
+      if (mask) {
+        free(mask);
+        mask = NULL;
       }
       H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADVALUE,
               "SPERR decompression failed.");
       return 0;
     }
 
-    size_t dst_len = (is_float ? 4ul : 8ul) * dims[0] * dims[1] * dims[2];
+    /* Put back the fill value. */
+    if (real_missing_mode == 1) {
+      icecream cream;
+      icecream_use_mem(&cream, mask, mask_bytes);
+      if (is_float) {
+        float* p = (float*)dst;
+        for (size_t i = 0; i < nelem; i++) {
+          if (icecream_rbit(&cream))
+            p[i] = nanf("1");
+        }
+      }
+      else {
+        double* p = (double*)dst;
+        for (size_t i = 0; i < nelem; i++) {
+          if (icecream_rbit(&cream))
+            p[i] = nan("1");
+        }
+      }
+      free(mask);
+      mask = NULL;
+    }
+    else if (real_missing_mode == 2) {
+      icecream cream;
+      icecream_use_mem(&cream, mask, mask_bytes);
+      if (is_float) {
+        float* p = (float*)dst;
+        for (size_t i = 0; i < nelem; i++) {
+          if (icecream_rbit(&cream))
+            p[i] = fill_val_f;
+        }
+      }
+      else {
+        double* p = (double*)dst;
+        for (size_t i = 0; i < nelem; i++) {
+          if (icecream_rbit(&cream))
+            p[i] = fill_val_d;
+        }
+      }
+      free(mask);
+      mask = NULL;
+    }
+
     if (dst_len <= *buf_size) { /* Re-use the input buffer */
       memcpy(*buf, dst, dst_len);
-      free(dst); /* allocated by SPERR, using malloc() */
+      free(dst); /* allocated by SPERR using malloc() */
       dst = NULL;
     }
     else {                 /* Point to the new buffer */
