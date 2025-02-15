@@ -179,26 +179,27 @@ template<typename T>
 T treat_nan_impl(T* buf, size_t nelem)
 {
   // First, find the mean value.
-  const size_t BLOCK = 4096;
-  T total_sum = 0.0, block_sum = 0.0;
+  const size_t BLOCK = 2048;
+  double total_sum = 0.0, block_sum = 0.0;
   size_t total_cnt = 0, block_cnt = 0;
+
   for (size_t i = 0; i < nelem; i++) {
     if (!std::isnan(buf[i])) {
-      block_sum += buf[i];
-      total_cnt++;
-      if (block_cnt++ == BLOCK) {
+      block_sum += double(buf[i]);
+      if (++block_cnt == BLOCK) {
         total_sum += block_sum;
+        total_cnt += BLOCK;
         block_sum = 0.0;
         block_cnt = 0;
       }
     }
   }
-  T mean = (total_sum + block_sum) / (T)total_cnt;
+  double mean = (total_sum + block_sum) / double(total_cnt + block_cnt);
 
   // Second, replace every occurance of NaN
-  std::replace_if(buf, buf + nelem, [](auto v) { return std::isnan(v); }, mean);
+  std::replace_if(buf, buf + nelem, [](auto v) { return std::isnan(v); }, T(mean));
 
-  return mean;
+  return T(mean);
 }
 float C_API::h5zsperr_treat_nan_f32(float* data_buf, size_t nelem)
 {
@@ -214,27 +215,28 @@ T treat_large_mag_impl(T* buf, size_t nelem)
 {
   // First, find the mean value.
   constexpr T MAG = sizeof(T) == 4 ? LARGE_MAGNITUDE_F : LARGE_MAGNITUDE_D;
-  const size_t BLOCK = 4096;
-  T total_sum = 0.0, block_sum = 0.0;
+  const size_t BLOCK = 2048;
+  double total_sum = 0.0, block_sum = 0.0;
   size_t total_cnt = 0, block_cnt = 0;
+
   for (size_t i = 0; i < nelem; i++) {
     if (std::abs(buf[i]) < MAG) {
-      block_sum += buf[i];
-      total_cnt++;
-      if (block_cnt++ == BLOCK) {
+      block_sum += double(buf[i]);
+      if (++block_cnt == BLOCK) {
         total_sum += block_sum;
+        total_cnt += BLOCK;
         block_sum = 0.0;
         block_cnt = 0;
       }
     }
   }
-  T mean = (total_sum + block_sum) / (T)total_cnt;
+  double mean = (total_sum + block_sum) / double(total_cnt + block_cnt);
 
   // Second, find the first large magnitude value.
   auto orig = *(std::find_if(buf, buf + nelem, [MAG](auto v) { return std::abs(v) >= MAG; }));
 
   // Third, replace every occurance of large magnitude
-  std::replace_if(buf, buf + nelem, [MAG](auto v) { return std::abs(v) >= MAG; }, mean);
+  std::replace_if(buf, buf + nelem, [MAG](auto v) { return std::abs(v) >= MAG; }, T(mean));
 
   return orig;
 }
