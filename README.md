@@ -49,6 +49,25 @@ import h5py         # provide general HDF5 support
 import hdf5plugin   # provide HDF5 plugin support
 ```
 
+## Handling of Missing Values
+There are three modes that users can use to indicate the potential existance of missing values:
+1. Mode `0`: no missing values;
+2. Mode `1`: there are potential NaNs;
+3. Mode `2`: there are potential values with a magnitude larger than `1e35`.
+
+`H5Z-SPERR` behaves differently in each modes:
+| Mode No.  | Actual Input Data    |  Filter Behavior |
+|-----------|----------------------|------------------|
+| 0         | No `NaN`, no `1e35`  | :heavy_check_mark: Normal SPERR compression |
+| 0         | Has `NaN` or `1e35`  | :x: Likely numeric error  |
+| 1         | No `NaN`, no `1e35`  | :heavy_check_mark: Normal SPERR compression  |
+| 1         | Has `NaN`, no `1e35` | :heavy_check_mark: Normal SPERR compression; `NaN` is restored at its exact locations  |
+| 1         | Regardless of `NaN`, has `1e35` |  :x: Likely numeric error  |
+| 2         | No `NaN`, no `1e35`  | :heavy_check_mark: Normal SPERR compression  |
+| 2         | No `NaN`, has `1e35` | :heavy_check_mark: Normal SPERR compression; `1e35` is restored at its exact locations  |
+| 2         | Has `NaN`, regardless of `1e35` | :x: Likely numeric error |
+
+
 
 ##  Find `cd_values[]`
 To apply SPERR compression using the HDF5 plugin, one needs to specify 1) what compression mode and 2)
