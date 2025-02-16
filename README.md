@@ -51,9 +51,9 @@ import hdf5plugin   # provide HDF5 plugin support
 
 ## Handling of Missing Values
 There are three modes that users can use to indicate the potential existance of missing values:
-1. Mode `0`: no missing values;
-2. Mode `1`: there are potential NaNs;
-3. Mode `2`: there are potential values with a magnitude larger than `1e35`.
+- Mode `0`: no missing values;
+- Mode `1`: there are potential NaNs;
+- Mode `2`: there are potential values with a magnitude larger than `1e35`.
 
 `H5Z-SPERR` behaves differently in each modes:
 | Mode No.  | Actual Input Data    |  Filter Behavior |
