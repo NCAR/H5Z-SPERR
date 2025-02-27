@@ -145,7 +145,8 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
    */
   int missing_val_mode = 0;
   if (user_cd_nelem == 1) {
-  } /* not providing missing value mode */
+    missing_val_mode = 0;
+  }
   else if (user_cd_nelem == 2) {
     missing_val_mode = user_cd_values[1];
     if (missing_val_mode > 2) {
@@ -338,7 +339,7 @@ static size_t H5Z_filter_sperr(unsigned int flags,
       assert(dimy == dims[1]);
       assert(dimz == dims[2]);
     }
-    if (ret != 0) {
+    if (ret) {
       if (dst) {
         free(dst);
         dst = NULL;
@@ -354,6 +355,7 @@ static size_t H5Z_filter_sperr(unsigned int flags,
 
     /* Put back the fill value. */
     if (real_missing_mode == 1) {
+      assert(mask);
       icecream cream;
       icecream_use_mem(&cream, mask, mask_bytes);
       if (is_float) {
@@ -374,6 +376,7 @@ static size_t H5Z_filter_sperr(unsigned int flags,
       mask = NULL;
     }
     else if (real_missing_mode == 2) {
+      assert(mask);
       icecream cream;
       icecream_use_mem(&cream, mask, mask_bytes);
       if (is_float) {
@@ -429,7 +432,7 @@ static size_t H5Z_filter_sperr(unsigned int flags,
     size_t mask_useful_bytes = 0;
     void* mask = NULL;
     if (real_missing_mode != 0) {
-      size_t mask_bytes = nelem / 8 + 1;
+      size_t mask_bytes = nelem / 4; /* just pick a big enough value */
       mask = malloc(mask_bytes);
       int ret = 0;
       if (real_missing_mode == 1) {
@@ -444,6 +447,7 @@ static size_t H5Z_filter_sperr(unsigned int flags,
         free(mask);
         H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADVALUE,
                 "SPERR compacting bitmask failed.");
+        return 0;
       }
     }
 
@@ -451,12 +455,14 @@ static size_t H5Z_filter_sperr(unsigned int flags,
     float replace_f = 0.f;
     double replace_d = 0.0;
     if (real_missing_mode == 1) {
+      /* not really making use of the return value */
       if (is_float)
         replace_f = h5zsperr_treat_nan_f32(*buf, nelem);
       else
         replace_d = h5zsperr_treat_nan_f64(*buf, nelem);
     }
     else if (real_missing_mode == 2) {
+      /* Keep the large-magnitude value to be replaced. */
       if (is_float)
         replace_f = h5zsperr_treat_large_mag_f32(*buf, nelem);
       else
@@ -476,9 +482,15 @@ static size_t H5Z_filter_sperr(unsigned int flags,
       ret = sperr_comp_3d(*buf, is_float, dims[0], dims[1], dims[2], dims[0], dims[1], dims[2],
                           comp_mode, quality, 1, &sperr, &sperr_len);
     }
-    if (ret != 0) {
-      if (sperr) free(sperr); /* allocated by SPERR using malloc() */
-      if (mask) free(mask);
+    if (ret) {
+      if (sperr) {
+        free(sperr); /* allocated by SPERR using malloc() */
+        sperr = NULL;
+      }
+      if (mask) {
+        free(mask);
+        mask = NULL;
+      }
       H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADVALUE,
               "SPERR compression failed.");
       return 0;
