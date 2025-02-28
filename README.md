@@ -36,7 +36,7 @@ See a complete example [here](https://github.com/NCAR/H5Z-SPERR/blob/main/exampl
 -->
 
 ## Use in Python
-`H5Z-SPERR` is supported by the Python package [hdf5plugin](https://github.com/silx-kit/hdf5plugin)
+`H5Z-SPERR` version `0.1.3` is supported by the Python package [hdf5plugin](https://github.com/silx-kit/hdf5plugin)
 since version `5.0.0`.
 One can install the package by issuing 
 ```bash
@@ -70,7 +70,7 @@ Users use an integer to indicate the potential existance of missing values:
 - Mode `1`: there are potential `NaN`s;
 - Mode `2`: there are potential values with a magnitude larger than `1e35`.
 
-`H5Z-SPERR` behaves accordingly:
+`H5Z-SPERR` behaves accordingly: (`1e35` denotes the *first occurance* of such values)
 | Mode      | Actual Input Data    |  Filter Behavior |
 |-----------|----------------------|------------------|
 | 0         | No `NaN`, no `1e35`  | :heavy_check_mark: Normal SPERR compression |
@@ -140,13 +140,13 @@ to show the coded compression parameters.
 Assume using the `nccopy` tool:
 ```Bash
 # Compress variable VAR0, using fixed-rate compression, bitrate = 3.3, no special handling of missing values.
-nccopy -F "VAR0, 268651725u" input_file output_file
-nccopy -F "VAR0, 268651725u, 0" input_file output_file
+nccopy -F "VAR0, 268651725u" <input_file> <output_file>
+nccopy -F "VAR0, 268651725u, 0" <input_file> <output_file>
 
 # Compress variable VAR1, using fixed-rate compression, bitrate = 3.3. VAR1 might have NaNs!
-nccopy -F "VAR1, 268651725u, 1" input_file output_file
+nccopy -F "VAR1, 268651725u, 1" <input_file> <output_file>
 
 # Compress variable VAR2, using fixed-rate compression, bitrate = 3.3. VAR2 might have values such as 1e35!
-nccopy -F "VAR2, 268651725u, 2" input_file output_file 
+nccopy -F "VAR2, 268651725u, 2" <input_file> <output_file> 
 ```
 
