@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.14)
 
-project(H5Z-SPERR VERSION 0.2.0 LANGUAGES C CXX DESCRIPTION "HDF5 plugin for SPERR compression")
+project(H5Z-SPERR VERSION 0.2.1 LANGUAGES C CXX DESCRIPTION "HDF5 plugin for SPERR compression")
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 14)
@@ -76,7 +76,7 @@ endif()
 # Start installation using GNU installation rules
 #
 include( GNUInstallDirs )
-install( TARGETS h5z-sperr LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} )
+install( TARGETS h5z-sperr h5z-clamp LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} )
 
 if( BUILD_CLI_UTILITIES )
   install( TARGETS generate_cd_values decode_cd_values
