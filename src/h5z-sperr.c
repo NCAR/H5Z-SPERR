@@ -248,7 +248,7 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
 
   H5Pmodify_filter(dcpl_id, H5Z_FILTER_SPERR, H5Z_FLAG_MANDATORY, cd_nelems, cd_values);
 
-  return 0;
+  return 1;
 }
 
 static size_t H5Z_filter_sperr(unsigned int flags,
