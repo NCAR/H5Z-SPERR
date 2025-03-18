@@ -4,6 +4,7 @@
 #include <memory>
 
 #include <H5PLextern.h>
+#include <hdf5.h>
 #include "h5zsperr_helper.h"
 
 #include "compactor.h"
