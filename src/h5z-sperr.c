@@ -222,7 +222,7 @@ static herr_t H5Z_set_local_sperr(hid_t dcpl_id, hid_t type_id, hid_t space_id)
    */
   unsigned int cd_values[7] = {0, 0, 0, 0, 0, 0, 0};
   cd_values[0] =
-      h5zsperr_pack_extra_info(real_dims, is_float, missing_val_mode, H5ZSPERR_MAGIC_NUM);
+      h5zsperr_pack_extra_info(real_dims, is_float, missing_val_mode, H5ZSPERR_COMPATIBILITY);
   cd_values[1] = user_cd_values[0];
   int i1 = 2, i2 = 0;
   while (i2 < 4) {
@@ -266,13 +266,11 @@ static size_t H5Z_filter_sperr(unsigned int flags,
   assert(missing_val_mode >= 0 && missing_val_mode <= 2);
   assert(cd_nelmts == (rank == 2 ? 4 : 5));
 
-#ifndef NDEBUG
-  if (magic != H5ZSPERR_MAGIC_NUM) {
-    printf("Magic number used for encoding (%d) differs from the decoder (%d). ", magic,
-           H5ZSPERR_MAGIC_NUM);
-    printf("Exame data corruption carefully.\n");
+  if (magic != H5ZSPERR_COMPATIBILITY) {
+    H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADVALUE,
+            "This file is produced by H5Z-SPERR of a different compatibility version.");
+    return 0;
   }
-#endif
 
   int comp_mode = 0, swap = 0;
   double quality = 0.0;

@@ -9,7 +9,7 @@
 
 #define LARGE_MAGNITUDE_F 1e35f
 #define LARGE_MAGNITUDE_D 1e35
-#define H5ZSPERR_MAGIC_NUM 0
+#define H5ZSPERR_COMPATIBILITY 1
 
 #ifdef __cplusplus
 namespace C_API {
