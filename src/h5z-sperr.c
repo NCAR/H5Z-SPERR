@@ -266,7 +266,8 @@ static size_t H5Z_filter_sperr(unsigned int flags,
   assert(missing_val_mode >= 0 && missing_val_mode <= 2);
   assert(cd_nelmts == (rank == 2 ? 4 : 5));
 
-  if (magic != H5ZSPERR_COMPATIBILITY) {
+  /* Support binaries from one generation back. */
+  if (magic < H5ZSPERR_COMPATIBILITY - 1 || magic > H5ZSPERR_COMPATIBILITY) {
     H5Epush(H5E_DEFAULT, __FILE__, __func__, __LINE__, H5E_ERR_CLS, H5E_PLINE, H5E_BADVALUE,
             "This file is produced by H5Z-SPERR of a different compatibility version.");
     return 0;
@@ -291,10 +292,21 @@ static size_t H5Z_filter_sperr(unsigned int flags,
   if (flags & H5Z_FLAG_REVERSE) { /* Decompression */
 
     const size_t nelem = (size_t)dims[0] * dims[1] * dims[2];
-
     const uint8_t* p = (uint8_t*)(*buf);
+
+    /*
+     * Since version 0.2.x, the real missing mode is explicitly stored in the first byte.
+     * However, there's no such byte storage in version 0.1.x. To be able to read binaries
+     * produced by 0.1.x, in such cases (magic == 0), real_missing_mode is always 0,
+     * and there's no byte offset.
+     * Can remove this logic when dropping support for 0.1.x.
+     */
     int real_missing_mode = p[0];
     size_t offset = 1;
+    if (magic == 0) {
+      real_missing_mode = 0;
+      offset = 0;
+    }
 
     /* Save the fill value. */
     float fill_val_f = 0.f;
@@ -501,6 +513,7 @@ static size_t H5Z_filter_sperr(unsigned int flags,
      * -- 4 or 8 bytes: the large-mag value being replaced, in missing value mode 2.
      *    0 byte: in missing value mode 0 or 1.
      * -- A compact bitmask, in missing value mode 1 or 2.
+     *    0 byte: in missing value mode 0.
      * -- The regular SPERR bitstream.
      */
     size_t out_len = sperr_len + 1;
