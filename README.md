@@ -36,7 +36,7 @@ See a complete example [here](https://github.com/NCAR/H5Z-SPERR/blob/main/exampl
 -->
 
 ## Use in Python
-`H5Z-SPERR` version `0.1.3` is supported by the Python package [hdf5plugin](https://github.com/silx-kit/hdf5plugin)
+`H5Z-SPERR` is supported by the Python package [hdf5plugin](https://github.com/silx-kit/hdf5plugin)
 since version `5.0.0`.
 One can install the package by issuing 
 ```bash
