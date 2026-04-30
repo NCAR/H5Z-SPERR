@@ -140,13 +140,13 @@ to show the coded compression parameters.
 Assume using the `nccopy` tool:
 ```Bash
 # Compress variable VAR0, using fixed-rate compression, bitrate = 3.3, no special handling of missing values.
-nccopy -F "VAR0, 268651725u" <input_file> <output_file>
-nccopy -F "VAR0, 268651725u, 0" <input_file> <output_file>
+nccopy -F "VAR0,32028,268651725u" <input_file> <output_file>
+nccopy -F "VAR0,32028,268651725u,0" <input_file> <output_file>
 
 # Compress variable VAR1, using fixed-rate compression, bitrate = 3.3. VAR1 might have NaNs!
-nccopy -F "VAR1, 268651725u, 1" <input_file> <output_file>
+nccopy -F "VAR1,32028,268651725u,1" <input_file> <output_file>
 
 # Compress variable VAR2, using fixed-rate compression, bitrate = 3.3. VAR2 might have values such as 1e35!
-nccopy -F "VAR2, 268651725u, 2" <input_file> <output_file> 
+nccopy -F "VAR2,32028,268651725u,2" <input_file> <output_file> 
 ```
 
